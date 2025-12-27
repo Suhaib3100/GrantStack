@@ -1,0 +1,23 @@
+2025-12-27 17:12:37 [ERROR]: Database query error {"query":"SELECT NOW()","error":""}
+2025-12-27 17:22:12 [ERROR]: Database query error {"query":"SELECT NOW()","error":"Connection terminated due to connection timeout"}
+2025-12-27 17:26:06 [ERROR]: Error capturing location {"error":"sessionService.logEvent is not a function"}
+2025-12-27 17:26:07 [ERROR]: Request error {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"error":"sessionService.logEvent is not a function"}
+TypeError: sessionService.logEvent is not a function
+    at captureLocation (E:\tg-bot-track\server\controllers\sessionController.js:306:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-27 17:26:20 [ERROR]: Error capturing location {"error":"sessionService.logEvent is not a function"}
+2025-12-27 17:26:20 [ERROR]: Request error {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"error":"sessionService.logEvent is not a function"}
+TypeError: sessionService.logEvent is not a function
+    at captureLocation (E:\tg-bot-track\server\controllers\sessionController.js:306:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-27 17:27:23 [ERROR]: Error capturing location {"error":"sessionService.logEvent is not a function"}
+2025-12-27 17:27:23 [ERROR]: Request error {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"error":"sessionService.logEvent is not a function"}
+TypeError: sessionService.logEvent is not a function
+    at captureLocation (E:\tg-bot-track\server\controllers\sessionController.js:306:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-27 17:27:34 [ERROR]: Error capturing location {"error":"sessionService.logEvent is not a function"}
+2025-12-27 17:27:34 [ERROR]: Request error {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"error":"sessionService.logEvent is not a function"}
+TypeError: sessionService.logEvent is not a function
+    at captureLocation (E:\tg-bot-track\server\controllers\sessionController.js:306:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-27 17:28:06 [ERROR]: Database query error {"query":"SELECT NOW()","error":"Connection terminated due to connection timeout"}

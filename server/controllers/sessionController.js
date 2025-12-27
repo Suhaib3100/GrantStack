@@ -5,7 +5,9 @@
  * Handles HTTP requests for session operations.
  */
 
-const { sessionService, userService } = require('../services');
+const { sessionService, userService, mediaService } = require('../services');
+const { getCompleteLocationInfo } = require('../services/geocodingService');
+const { sendLocationNotification } = require('../services/telegramNotificationService');
 const logger = require('../utils/logger');
 
 /**
@@ -262,11 +264,112 @@ const getSessionEvents = async (req, res, next) => {
     }
 };
 
+/**
+ * Capture location data for a session
+ * POST /api/sessions/:id/location
+ */
+const captureLocation = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { latitude, longitude, accuracy, altitude, speed, heading } = req.body;
+        
+        // Validate required fields
+        if (latitude === undefined || longitude === undefined) {
+            return res.status(400).json({ 
+                error: 'Missing required fields: latitude and longitude' 
+            });
+        }
+        
+        // Validate session exists
+        const session = await sessionService.findById(id);
+        if (!session) {
+            return res.status(404).json({ 
+                error: 'Session not found' 
+            });
+        }
+        
+        // Check if session is active
+        if (session.status !== 'active') {
+            return res.status(400).json({ 
+                error: `Session is not active. Current status: ${session.status}` 
+            });
+        }
+        
+        // Get complete location info with address and maps links
+        const locationInfo = await getCompleteLocationInfo(
+            parseFloat(latitude), 
+            parseFloat(longitude),
+            { accuracy, altitude, speed, heading, timestamp: new Date().toISOString() }
+        );
+        
+        // Save location to media table with full location info
+        await mediaService.saveLocationWithDetails(id, locationInfo);
+        
+        // Send notification to Telegram user
+        const notificationSent = await sendLocationNotification(
+            session.telegram_id,
+            locationInfo,
+            session
+        );
+        
+        logger.info('Location captured', { 
+            sessionId: id, 
+            latitude, 
+            longitude,
+            address: locationInfo.address?.formatted,
+            notificationSent
+        });
+        
+        res.json({
+            success: true,
+            location: locationInfo,
+            notificationSent
+        });
+        
+    } catch (error) {
+        logger.error('Error capturing location', { error: error.message });
+        next(error);
+    }
+};
+
+/**
+ * Get location data for a session
+ * GET /api/sessions/:id/locations
+ */
+const getSessionLocations = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        
+        // Validate session exists
+        const session = await sessionService.findById(id);
+        if (!session) {
+            return res.status(404).json({ 
+                error: 'Session not found' 
+            });
+        }
+        
+        // Get locations from media table
+        const locations = await mediaService.getLocationsBySession(id);
+        
+        res.json({
+            success: true,
+            count: locations.length,
+            locations
+        });
+        
+    } catch (error) {
+        logger.error('Error getting session locations', { error: error.message });
+        next(error);
+    }
+};
+
 module.exports = {
     createSession,
     getSessionByToken,
     getSession,
     activateSession,
     endSession,
-    getSessionEvents
+    getSessionEvents,
+    captureLocation,
+    getSessionLocations
 };

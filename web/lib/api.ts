@@ -59,7 +59,7 @@ export async function uploadLocation(sessionId: string, data: {
   heading?: number;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}/location`, {
+    const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/location`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)

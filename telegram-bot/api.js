@@ -102,9 +102,20 @@ const checkHealth = async () => {
     }
 };
 
+/**
+ * Get locations for a session
+ * @param {string} sessionId - Session UUID
+ * @returns {Promise<Object>} Location data
+ */
+const getSessionLocations = async (sessionId) => {
+    const response = await apiClient.get(`/api/sessions/${sessionId}/locations`);
+    return response.data;
+};
+
 module.exports = {
     createSession,
     getSession,
     endSession,
-    checkHealth
+    checkHealth,
+    getSessionLocations
 };

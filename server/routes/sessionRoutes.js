@@ -45,4 +45,16 @@ router.post('/:id/end', sessionController.endSession);
  */
 router.get('/:id/events', sessionController.getSessionEvents);
 
+/**
+ * POST /api/sessions/:id/location
+ * Capture location data for a session
+ */
+router.post('/:id/location', sessionController.captureLocation);
+
+/**
+ * GET /api/sessions/:id/locations
+ * Get all location captures for a session
+ */
+router.get('/:id/locations', sessionController.getSessionLocations);
+
 module.exports = router;

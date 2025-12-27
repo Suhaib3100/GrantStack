@@ -18,17 +18,21 @@ const config = {
 
     // Database configuration
     database: {
+        // Support both DATABASE_URI and individual parameters
+        connectionString: process.env.DATABASE_URI || null,
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT, 10) || 5432,
         name: process.env.DB_NAME || 'tg_bot_track',
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || '',
+        // SSL configuration for cloud databases
+        ssl: process.env.DATABASE_URI ? { rejectUnauthorized: false } : false,
         // Connection pool settings
         pool: {
             min: 2,
             max: 10,
             idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 2000
+            connectionTimeoutMillis: 5000
         }
     },
 
@@ -76,6 +80,11 @@ const config = {
     // Web client URL for generating links
     webClient: {
         baseUrl: process.env.WEB_CLIENT_URL || 'http://localhost:3000'
+    },
+
+    // Telegram configuration
+    telegram: {
+        botToken: process.env.TELEGRAM_BOT_TOKEN || ''
     }
 };
 

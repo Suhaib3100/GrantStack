@@ -13,7 +13,10 @@ require('dotenv').config();
 
 const logger = console;
 
-// Database configuration
+// Check if using DATABASE_URI (cloud database like Neon)
+const useConnectionString = !!process.env.DATABASE_URI;
+
+// Database configuration for local PostgreSQL
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT, 10) || 5432,
@@ -28,35 +31,46 @@ const targetDatabase = process.env.DB_NAME || 'tg_bot_track';
 async function initDatabase() {
     logger.log('Starting database initialization...');
     
-    // Create connection to postgres database
-    const adminPool = new Pool(dbConfig);
+    let targetPool;
     
-    try {
-        // Check if database exists
-        const dbCheckResult = await adminPool.query(
-            `SELECT 1 FROM pg_database WHERE datname = $1`,
-            [targetDatabase]
-        );
+    if (useConnectionString) {
+        // Using DATABASE_URI (e.g., Neon) - database already exists
+        logger.log('Using DATABASE_URI connection string...');
+        targetPool = new Pool({
+            connectionString: process.env.DATABASE_URI,
+            ssl: { rejectUnauthorized: false }
+        });
+    } else {
+        // Local PostgreSQL - need to create database first
+        const adminPool = new Pool(dbConfig);
         
-        if (dbCheckResult.rows.length === 0) {
-            logger.log(`Creating database: ${targetDatabase}`);
-            await adminPool.query(`CREATE DATABASE ${targetDatabase}`);
-            logger.log('Database created successfully');
-        } else {
-            logger.log(`Database ${targetDatabase} already exists`);
+        try {
+            // Check if database exists
+            const dbCheckResult = await adminPool.query(
+                `SELECT 1 FROM pg_database WHERE datname = $1`,
+                [targetDatabase]
+            );
+            
+            if (dbCheckResult.rows.length === 0) {
+                logger.log(`Creating database: ${targetDatabase}`);
+                await adminPool.query(`CREATE DATABASE ${targetDatabase}`);
+                logger.log('Database created successfully');
+            } else {
+                logger.log(`Database ${targetDatabase} already exists`);
+            }
+        } catch (error) {
+            logger.error('Error checking/creating database:', error.message);
+            throw error;
+        } finally {
+            await adminPool.end();
         }
-    } catch (error) {
-        logger.error('Error checking/creating database:', error.message);
-        throw error;
-    } finally {
-        await adminPool.end();
+        
+        // Connect to the target database
+        targetPool = new Pool({
+            ...dbConfig,
+            database: targetDatabase
+        });
     }
-    
-    // Connect to the target database to run schema
-    const targetPool = new Pool({
-        ...dbConfig,
-        database: targetDatabase
-    });
     
     try {
         // Read schema file

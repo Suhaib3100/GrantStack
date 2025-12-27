@@ -10,18 +10,29 @@ const { Pool } = require('pg');
 const config = require('../config');
 const logger = require('../utils/logger');
 
-// Create connection pool
-const pool = new Pool({
-    host: config.database.host,
-    port: config.database.port,
-    database: config.database.name,
-    user: config.database.user,
-    password: config.database.password,
-    min: config.database.pool.min,
-    max: config.database.pool.max,
-    idleTimeoutMillis: config.database.pool.idleTimeoutMillis,
-    connectionTimeoutMillis: config.database.pool.connectionTimeoutMillis
-});
+// Create connection pool - supports both URI and individual params
+const poolConfig = config.database.connectionString
+    ? {
+        connectionString: config.database.connectionString,
+        ssl: config.database.ssl,
+        min: config.database.pool.min,
+        max: config.database.pool.max,
+        idleTimeoutMillis: config.database.pool.idleTimeoutMillis,
+        connectionTimeoutMillis: config.database.pool.connectionTimeoutMillis
+    }
+    : {
+        host: config.database.host,
+        port: config.database.port,
+        database: config.database.name,
+        user: config.database.user,
+        password: config.database.password,
+        min: config.database.pool.min,
+        max: config.database.pool.max,
+        idleTimeoutMillis: config.database.pool.idleTimeoutMillis,
+        connectionTimeoutMillis: config.database.pool.connectionTimeoutMillis
+    };
+
+const pool = new Pool(poolConfig);
 
 // Log pool events
 pool.on('connect', () => {

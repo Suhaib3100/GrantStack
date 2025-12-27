@@ -1,0 +1,290 @@
+2025-12-27 17:12:37 [ERROR]: Database query error {"query":"SELECT NOW()","error":""}
+2025-12-27 17:15:21 [DEBUG]: New client connected to database pool
+2025-12-27 17:15:21 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"4961ms","rows":1}
+2025-12-27 17:15:21 [INFO]: Database connection successful
+2025-12-27 17:15:21 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:15:21 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:15:21 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:15:21 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:15:21 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:15:30 [INFO]: Shutting down server...
+2025-12-27 17:15:54 [DEBUG]: New client connected to database pool
+2025-12-27 17:15:54 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"4913ms","rows":1}
+2025-12-27 17:15:54 [INFO]: Database connection successful
+2025-12-27 17:15:54 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:15:54 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:15:54 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:15:54 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:15:54 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:16:04 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"269ms","rows":1}
+2025-12-27 17:16:04 [INFO]: Database connection successful
+2025-12-27 17:16:04 [DEBUG]: HTTP Request {"method":"GET","url":"/health","status":200,"duration":"280ms"}
+2025-12-27 17:16:44 [DEBUG]: Executed query {"query":"SELECT * FROM users WHERE telegram_id = $1","duration":"272ms","rows":0}
+2025-12-27 17:16:44 [DEBUG]: Executed query {"query":"INSERT INTO users (telegram_id, username, first_name, last_name)\n         VALUES ($1, $2, $3, $4)\n  ","duration":"298ms","rows":1}
+2025-12-27 17:16:44 [INFO]: User created {"userId":"9cc551d3-0149-4651-8aa4-af3d1225771b","telegramId":6737328498}
+2025-12-27 17:16:44 [DEBUG]: Executed query {"query":"INSERT INTO sessions (user_id, permission_type, expires_at)\n         VALUES ($1, $2, $3)\n         RE","duration":"275ms","rows":1}
+2025-12-27 17:16:44 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"333ms","rows":1}
+2025-12-27 17:16:44 [DEBUG]: Event created {"sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","eventType":"session_created"}
+2025-12-27 17:16:44 [INFO]: Session created {"sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","token":"fba8e34d-228d-4f00-816f-4a02c5e4c0c9","permissionType":"location"}
+2025-12-27 17:16:44 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions","status":201,"duration":"1189ms"}
+2025-12-27 17:16:49 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"302ms","rows":0}
+2025-12-27 17:17:49 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"269ms","rows":0}
+2025-12-27 17:17:58 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"272ms","rows":1}
+2025-12-27 17:17:58 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/fba8e34d-228d-4f00-816f-4a02c5e4c0c9","status":200,"duration":"305ms"}
+2025-12-27 17:17:59 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"278ms","rows":1}
+2025-12-27 17:17:59 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/fba8e34d-228d-4f00-816f-4a02c5e4c0c9","status":304,"duration":"281ms"}
+2025-12-27 17:18:00 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"347ms","rows":1}
+2025-12-27 17:18:01 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = $2,\n             activated_at = COALESCE($3, activated_at),\n ","duration":"305ms","rows":1}
+2025-12-27 17:18:01 [INFO]: Session status updated {"sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","status":"active"}
+2025-12-27 17:18:01 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"272ms","rows":1}
+2025-12-27 17:18:01 [DEBUG]: Event created {"sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","eventType":"session_activated"}
+2025-12-27 17:18:01 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions/29b505e8-01e4-4636-9f1f-e4ca427c4276/activate","status":200,"duration":"935ms"}
+2025-12-27 17:18:10 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"339ms","rows":1}
+2025-12-27 17:18:11 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"270ms","rows":1}
+2025-12-27 17:18:11 [DEBUG]: Executed query {"query":"INSERT INTO media (session_id, media_type, metadata)\n         VALUES ($1, 'location', $2)\n         R","duration":"339ms","rows":1}
+2025-12-27 17:18:11 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"269ms","rows":1}
+2025-12-27 17:18:11 [DEBUG]: Event created {"sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","eventType":"data_received"}
+2025-12-27 17:18:11 [INFO]: Location data saved {"mediaId":"3db332b2-8695-4bee-9ff2-88fd529d3f71","sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","latitude":14.230449541099942,"longitude":76.40027269973388}
+2025-12-27 17:18:11 [DEBUG]: HTTP Request {"method":"POST","url":"/api/session/29b505e8-01e4-4636-9f1f-e4ca427c4276/location","status":201,"duration":"1230ms"}
+2025-12-27 17:18:16 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"300ms","rows":1}
+2025-12-27 17:18:16 [DEBUG]: Executed query {"query":"SELECT media_type, COUNT(*) as count\n         FROM media \n         WHERE session_id = $1 \n         G","duration":"269ms","rows":1}
+2025-12-27 17:18:16 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/29b505e8-01e4-4636-9f1f-e4ca427c4276","status":200,"duration":"575ms"}
+2025-12-27 17:18:21 [DEBUG]: New client connected to database pool
+2025-12-27 17:18:21 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"4943ms","rows":1}
+2025-12-27 17:18:21 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"271ms","rows":1}
+2025-12-27 17:18:22 [DEBUG]: Executed query {"query":"INSERT INTO media (session_id, media_type, metadata)\n         VALUES ($1, 'location', $2)\n         R","duration":"275ms","rows":1}
+2025-12-27 17:18:22 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"306ms","rows":1}
+2025-12-27 17:18:22 [DEBUG]: Event created {"sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","eventType":"data_received"}
+2025-12-27 17:18:22 [INFO]: Location data saved {"mediaId":"b9eaa46f-5458-4bab-864d-6864160b2095","sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","latitude":14.23002914955036,"longitude":76.40020035506994}
+2025-12-27 17:18:22 [DEBUG]: HTTP Request {"method":"POST","url":"/api/session/29b505e8-01e4-4636-9f1f-e4ca427c4276/location","status":201,"duration":"5807ms"}
+2025-12-27 17:18:29 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"337ms","rows":1}
+2025-12-27 17:18:29 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"272ms","rows":1}
+2025-12-27 17:18:29 [DEBUG]: Executed query {"query":"INSERT INTO media (session_id, media_type, metadata)\n         VALUES ($1, 'location', $2)\n         R","duration":"271ms","rows":1}
+2025-12-27 17:18:29 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"375ms","rows":1}
+2025-12-27 17:18:29 [DEBUG]: Event created {"sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","eventType":"data_received"}
+2025-12-27 17:18:29 [INFO]: Location data saved {"mediaId":"64f3d554-4c92-4518-9f4f-7f5966da0b14","sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","latitude":14.23003753147402,"longitude":76.40018140828984}
+2025-12-27 17:18:29 [DEBUG]: HTTP Request {"method":"POST","url":"/api/session/29b505e8-01e4-4636-9f1f-e4ca427c4276/location","status":201,"duration":"1266ms"}
+2025-12-27 17:18:49 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"272ms","rows":0}
+2025-12-27 17:19:49 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"273ms","rows":0}
+2025-12-27 17:20:36 [DEBUG]: New client connected to database pool
+2025-12-27 17:20:36 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"4882ms","rows":1}
+2025-12-27 17:20:36 [INFO]: Database connection successful
+2025-12-27 17:20:36 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:20:36 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:20:36 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:20:36 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:20:36 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:20:50 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"276ms","rows":1}
+2025-12-27 17:20:50 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/fba8e34d-228d-4f00-816f-4a02c5e4c0c9","status":200,"duration":"304ms"}
+2025-12-27 17:20:50 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"361ms","rows":1}
+2025-12-27 17:20:50 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/fba8e34d-228d-4f00-816f-4a02c5e4c0c9","status":304,"duration":"368ms"}
+2025-12-27 17:20:52 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"272ms","rows":1}
+2025-12-27 17:20:52 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"270ms","rows":1}
+2025-12-27 17:20:52 [DEBUG]: Executed query {"query":"INSERT INTO media (session_id, media_type, metadata)\n         VALUES ($1, 'location', $2)\n         R","duration":"270ms","rows":1}
+2025-12-27 17:20:52 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"273ms","rows":1}
+2025-12-27 17:20:52 [DEBUG]: Event created {"sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","eventType":"data_received"}
+2025-12-27 17:20:52 [INFO]: Location data saved {"mediaId":"43e34b97-317a-45e0-a0da-9523333eec88","sessionId":"29b505e8-01e4-4636-9f1f-e4ca427c4276","latitude":14.230264,"longitude":76.40002525}
+2025-12-27 17:20:52 [DEBUG]: HTTP Request {"method":"POST","url":"/api/session/29b505e8-01e4-4636-9f1f-e4ca427c4276/location","status":201,"duration":"1105ms"}
+2025-12-27 17:20:57 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"326ms","rows":1}
+2025-12-27 17:20:57 [DEBUG]: Executed query {"query":"SELECT media_type, COUNT(*) as count\n         FROM media \n         WHERE session_id = $1 \n         G","duration":"271ms","rows":1}
+2025-12-27 17:20:57 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/29b505e8-01e4-4636-9f1f-e4ca427c4276","status":200,"duration":"605ms"}
+2025-12-27 17:21:31 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"278ms","rows":0}
+2025-12-27 17:22:12 [ERROR]: Database query error {"query":"SELECT NOW()","error":"Connection terminated due to connection timeout"}
+2025-12-27 17:22:33 [DEBUG]: New client connected to database pool
+2025-12-27 17:22:33 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"4995ms","rows":1}
+2025-12-27 17:22:33 [INFO]: Database connection successful
+2025-12-27 17:22:33 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:22:33 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:22:33 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:22:33 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:22:33 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:22:39 [DEBUG]: New client connected to database pool
+2025-12-27 17:22:39 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"4938ms","rows":1}
+2025-12-27 17:22:39 [INFO]: Database connection successful
+2025-12-27 17:22:39 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:22:39 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:22:39 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:22:39 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:22:39 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:23:00 [DEBUG]: New client connected to database pool
+2025-12-27 17:23:00 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"5061ms","rows":1}
+2025-12-27 17:23:00 [INFO]: Database connection successful
+2025-12-27 17:23:00 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:23:00 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:23:00 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:23:00 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:23:00 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:23:12 [DEBUG]: New client connected to database pool
+2025-12-27 17:23:12 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"4828ms","rows":1}
+2025-12-27 17:23:12 [INFO]: Database connection successful
+2025-12-27 17:23:12 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:23:12 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:23:12 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:23:12 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:23:12 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:23:21 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"263ms","rows":1}
+2025-12-27 17:23:22 [DEBUG]: Executed query {"query":"SELECT media_type, COUNT(*) as count\n         FROM media \n         WHERE session_id = $1 \n         G","duration":"261ms","rows":1}
+2025-12-27 17:23:22 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/29b505e8-01e4-4636-9f1f-e4ca427c4276","status":200,"duration":"537ms"}
+2025-12-27 17:23:28 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"267ms","rows":1}
+2025-12-27 17:23:28 [INFO]: Database connection successful
+2025-12-27 17:23:28 [DEBUG]: HTTP Request {"method":"GET","url":"/health","status":200,"duration":"273ms"}
+2025-12-27 17:23:42 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"322ms","rows":1}
+2025-12-27 17:23:42 [INFO]: Database connection successful
+2025-12-27 17:23:42 [DEBUG]: HTTP Request {"method":"GET","url":"/health","status":200,"duration":"324ms"}
+2025-12-27 17:24:03 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"264ms","rows":1}
+2025-12-27 17:24:03 [INFO]: Database connection successful
+2025-12-27 17:24:03 [DEBUG]: HTTP Request {"method":"GET","url":"/health","status":200,"duration":"278ms"}
+2025-12-27 17:24:08 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"260ms","rows":0}
+2025-12-27 17:24:45 [DEBUG]: New client connected to database pool
+2025-12-27 17:24:45 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"4939ms","rows":1}
+2025-12-27 17:24:45 [INFO]: Database connection successful
+2025-12-27 17:24:45 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:24:45 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:24:45 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:24:45 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:24:45 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:24:46 [DEBUG]: New client connected to database pool
+2025-12-27 17:24:46 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"5063ms","rows":1}
+2025-12-27 17:24:46 [INFO]: Database connection successful
+2025-12-27 17:24:46 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:24:46 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:24:46 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:24:46 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:25:16 [DEBUG]: New client connected to database pool
+2025-12-27 17:25:17 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"4861ms","rows":1}
+2025-12-27 17:25:17 [INFO]: Database connection successful
+2025-12-27 17:25:17 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:25:17 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:25:17 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:25:17 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:25:17 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:25:34 [DEBUG]: Executed query {"query":"SELECT * FROM users WHERE telegram_id = $1","duration":"275ms","rows":1}
+2025-12-27 17:25:34 [DEBUG]: Executed query {"query":"INSERT INTO sessions (user_id, permission_type, expires_at)\n         VALUES ($1, $2, $3)\n         RE","duration":"274ms","rows":1}
+2025-12-27 17:25:34 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"272ms","rows":1}
+2025-12-27 17:25:34 [DEBUG]: Event created {"sessionId":"d7cde324-3045-4058-b6f7-b94b17ce6ae2","eventType":"session_created"}
+2025-12-27 17:25:34 [INFO]: Session created {"sessionId":"d7cde324-3045-4058-b6f7-b94b17ce6ae2","token":"542cd984-7dac-4f08-9dc4-c242437885f2","permissionType":"location"}
+2025-12-27 17:25:34 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions","status":201,"duration":"855ms"}
+2025-12-27 17:25:49 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"341ms","rows":1}
+2025-12-27 17:25:49 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/542cd984-7dac-4f08-9dc4-c242437885f2","status":200,"duration":"355ms"}
+2025-12-27 17:25:50 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"278ms","rows":1}
+2025-12-27 17:25:50 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/542cd984-7dac-4f08-9dc4-c242437885f2","status":304,"duration":"283ms"}
+2025-12-27 17:25:51 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"272ms","rows":1}
+2025-12-27 17:25:51 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = $2,\n             activated_at = COALESCE($3, activated_at),\n ","duration":"328ms","rows":1}
+2025-12-27 17:25:51 [INFO]: Session status updated {"sessionId":"d7cde324-3045-4058-b6f7-b94b17ce6ae2","status":"active"}
+2025-12-27 17:25:51 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"304ms","rows":1}
+2025-12-27 17:25:51 [DEBUG]: Event created {"sessionId":"d7cde324-3045-4058-b6f7-b94b17ce6ae2","eventType":"session_activated"}
+2025-12-27 17:25:51 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/activate","status":200,"duration":"911ms"}
+2025-12-27 17:26:05 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"362ms","rows":1}
+2025-12-27 17:26:06 [ERROR]: Error capturing location {"error":"sessionService.logEvent is not a function"}
+2025-12-27 17:26:07 [ERROR]: Request error {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"error":"sessionService.logEvent is not a function"}
+TypeError: sessionService.logEvent is not a function
+    at captureLocation (E:\tg-bot-track\server\controllers\sessionController.js:306:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-27 17:26:07 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"duration":"1835ms"}
+2025-12-27 17:26:10 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"274ms","rows":1}
+2025-12-27 17:26:10 [DEBUG]: Executed query {"query":"SELECT media_type, COUNT(*) as count\n         FROM media \n         WHERE session_id = $1 \n         G","duration":"271ms","rows":0}
+2025-12-27 17:26:10 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2","status":200,"duration":"551ms"}
+2025-12-27 17:26:12 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"307ms","rows":0}
+2025-12-27 17:26:20 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"275ms","rows":1}
+2025-12-27 17:26:20 [ERROR]: Error capturing location {"error":"sessionService.logEvent is not a function"}
+2025-12-27 17:26:20 [ERROR]: Request error {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"error":"sessionService.logEvent is not a function"}
+TypeError: sessionService.logEvent is not a function
+    at captureLocation (E:\tg-bot-track\server\controllers\sessionController.js:306:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-27 17:26:20 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"duration":"749ms"}
+2025-12-27 17:27:12 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"270ms","rows":0}
+2025-12-27 17:27:22 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"279ms","rows":1}
+2025-12-27 17:27:23 [ERROR]: Error capturing location {"error":"sessionService.logEvent is not a function"}
+2025-12-27 17:27:23 [ERROR]: Request error {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"error":"sessionService.logEvent is not a function"}
+TypeError: sessionService.logEvent is not a function
+    at captureLocation (E:\tg-bot-track\server\controllers\sessionController.js:306:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-27 17:27:23 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"duration":"1582ms"}
+2025-12-27 17:27:33 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"284ms","rows":1}
+2025-12-27 17:27:34 [ERROR]: Error capturing location {"error":"sessionService.logEvent is not a function"}
+2025-12-27 17:27:34 [ERROR]: Request error {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"error":"sessionService.logEvent is not a function"}
+TypeError: sessionService.logEvent is not a function
+    at captureLocation (E:\tg-bot-track\server\controllers\sessionController.js:306:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-27 17:27:34 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions/d7cde324-3045-4058-b6f7-b94b17ce6ae2/location","status":500,"duration":"643ms"}
+2025-12-27 17:28:06 [ERROR]: Database query error {"query":"SELECT NOW()","error":"Connection terminated due to connection timeout"}
+2025-12-27 17:28:36 [DEBUG]: New client connected to database pool
+2025-12-27 17:28:37 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"5025ms","rows":1}
+2025-12-27 17:28:37 [INFO]: Database connection successful
+2025-12-27 17:28:37 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:28:37 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:28:37 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:28:37 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:28:37 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:28:53 [DEBUG]: New client connected to database pool
+2025-12-27 17:28:58 [DEBUG]: New client connected to database pool
+2025-12-27 17:28:58 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"5240ms","rows":1}
+2025-12-27 17:28:58 [INFO]: Database connection successful
+2025-12-27 17:28:58 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:28:58 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:28:58 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:28:58 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:28:58 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:28:59 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"304ms","rows":1}
+2025-12-27 17:28:59 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/542cd984-7dac-4f08-9dc4-c242437885f2","status":200,"duration":"313ms"}
+2025-12-27 17:28:59 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"302ms","rows":1}
+2025-12-27 17:28:59 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/542cd984-7dac-4f08-9dc4-c242437885f2","status":304,"duration":"306ms"}
+2025-12-27 17:29:15 [DEBUG]: New client connected to database pool
+2025-12-27 17:29:15 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"5122ms","rows":1}
+2025-12-27 17:29:15 [INFO]: Database connection successful
+2025-12-27 17:29:15 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:29:15 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:29:15 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:29:15 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:29:15 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:29:26 [DEBUG]: New client connected to database pool
+2025-12-27 17:29:27 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"5126ms","rows":1}
+2025-12-27 17:29:27 [INFO]: Database connection successful
+2025-12-27 17:29:27 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:29:27 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:29:27 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:29:27 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:29:27 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:29:39 [DEBUG]: New client connected to database pool
+2025-12-27 17:29:40 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"5113ms","rows":1}
+2025-12-27 17:29:40 [INFO]: Database connection successful
+2025-12-27 17:29:40 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:29:40 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:29:40 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:29:40 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:29:40 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":"http://localhost:3000"}
+2025-12-27 17:29:54 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"313ms","rows":1}
+2025-12-27 17:29:54 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/542cd984-7dac-4f08-9dc4-c242437885f2","status":304,"duration":"324ms"}
+2025-12-27 17:29:54 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"310ms","rows":1}
+2025-12-27 17:29:54 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/542cd984-7dac-4f08-9dc4-c242437885f2","status":304,"duration":"312ms"}
+2025-12-27 17:30:01 [DEBUG]: Executed query {"query":"SELECT * FROM users WHERE telegram_id = $1","duration":"318ms","rows":1}
+2025-12-27 17:30:01 [DEBUG]: Executed query {"query":"INSERT INTO sessions (user_id, permission_type, expires_at)\n         VALUES ($1, $2, $3)\n         RE","duration":"312ms","rows":1}
+2025-12-27 17:30:02 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"314ms","rows":1}
+2025-12-27 17:30:02 [DEBUG]: Event created {"sessionId":"b92cf302-f1c6-48ad-9037-0c2b8bf0b1ed","eventType":"session_created"}
+2025-12-27 17:30:02 [INFO]: Session created {"sessionId":"b92cf302-f1c6-48ad-9037-0c2b8bf0b1ed","token":"0bf1a7ba-4157-4780-a4b2-1d6ba889c954","permissionType":"single_photo"}
+2025-12-27 17:30:02 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions","status":201,"duration":"954ms"}
+2025-12-27 17:30:07 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"311ms","rows":1}
+2025-12-27 17:30:07 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/0bf1a7ba-4157-4780-a4b2-1d6ba889c954","status":200,"duration":"313ms"}
+2025-12-27 17:30:07 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"311ms","rows":1}
+2025-12-27 17:30:07 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/token/0bf1a7ba-4157-4780-a4b2-1d6ba889c954","status":304,"duration":"314ms"}
+2025-12-27 17:30:08 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"311ms","rows":1}
+2025-12-27 17:30:08 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = $2,\n             activated_at = COALESCE($3, activated_at),\n ","duration":"310ms","rows":1}
+2025-12-27 17:30:08 [INFO]: Session status updated {"sessionId":"b92cf302-f1c6-48ad-9037-0c2b8bf0b1ed","status":"active"}
+2025-12-27 17:30:09 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"311ms","rows":1}
+2025-12-27 17:30:09 [DEBUG]: Event created {"sessionId":"b92cf302-f1c6-48ad-9037-0c2b8bf0b1ed","eventType":"session_activated"}
+2025-12-27 17:30:09 [DEBUG]: HTTP Request {"method":"POST","url":"/api/sessions/b92cf302-f1c6-48ad-9037-0c2b8bf0b1ed/activate","status":200,"duration":"939ms"}
+2025-12-27 17:30:18 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"313ms","rows":1}
+2025-12-27 17:30:18 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"311ms","rows":1}
+2025-12-27 17:30:18 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 17:30:18 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 17:30:18 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 17:30:18 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 17:30:18 [DEBUG]: Executed query {"query":"INSERT INTO media (session_id, media_type, file_path, file_name, file_size, mime_type, duration, met","duration":"313ms","rows":1}
+2025-12-27 17:30:19 [DEBUG]: Executed query {"query":"INSERT INTO events (session_id, event_type, payload)\n         VALUES ($1, $2, $3)\n         RETURNING","duration":"315ms","rows":1}
+2025-12-27 17:30:19 [DEBUG]: Event created {"sessionId":"b92cf302-f1c6-48ad-9037-0c2b8bf0b1ed","eventType":"data_received"}
+2025-12-27 17:30:19 [INFO]: Media file saved {"mediaId":"f8762630-4aca-410a-8dfe-1df8f0f69c58","sessionId":"b92cf302-f1c6-48ad-9037-0c2b8bf0b1ed","mediaType":"photo","fileSize":37824}
+2025-12-27 17:30:19 [DEBUG]: HTTP Request {"method":"POST","url":"/api/session/b92cf302-f1c6-48ad-9037-0c2b8bf0b1ed/photo","status":201,"duration":"1306ms"}
+2025-12-27 17:30:26 [DEBUG]: Executed query {"query":"SELECT s.*, u.telegram_id, u.username, u.first_name\n         FROM sessions s\n         JOIN users u O","duration":"310ms","rows":1}
+2025-12-27 17:30:26 [DEBUG]: Executed query {"query":"SELECT media_type, COUNT(*) as count\n         FROM media \n         WHERE session_id = $1 \n         G","duration":"309ms","rows":1}
+2025-12-27 17:30:26 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/b92cf302-f1c6-48ad-9037-0c2b8bf0b1ed","status":200,"duration":"622ms"}
+2025-12-27 17:30:35 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"309ms","rows":0}

@@ -281,6 +281,7 @@ module.exports = {
     getByUserId,
     getActiveByUserId,
     createEvent,
+    logEvent: createEvent,  // Alias for createEvent
     getEvents,
     expireOldSessions,
     generateWebLink
