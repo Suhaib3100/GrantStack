@@ -812,31 +812,41 @@ bot.action(/^viewuser_(\d+)$/, async (ctx) => {
         
         const { user, sessions } = result.data;
         
-        let msg = `👤 *User Details*\n\n`;
-        msg += `*Name:* ${user.firstName || ''} ${user.lastName || ''}\n`;
-        msg += `*Username:* @${user.username || 'N/A'}\n`;
-        msg += `*Telegram ID:* \`${user.telegramId}\`\n`;
-        msg += `*Status:* ${user.isApproved ? '✅ Approved' : '❌ Not Approved'}\n\n`;
+        // Escape HTML special characters
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        };
         
-        msg += `📊 *Sessions:* ${sessions.length}\n`;
+        const firstName = escapeHtml(user.firstName || '');
+        const lastName = escapeHtml(user.lastName || '');
+        const username = escapeHtml(user.username || 'N/A');
+        
+        let msg = `👤 <b>User Details</b>\n\n`;
+        msg += `<b>Name:</b> ${firstName} ${lastName}\n`;
+        msg += `<b>Username:</b> @${username}\n`;
+        msg += `<b>Telegram ID:</b> <code>${user.telegramId}</code>\n`;
+        msg += `<b>Status:</b> ${user.isApproved ? '✅ Approved' : '❌ Not Approved'}\n\n`;
+        
+        msg += `📊 <b>Sessions:</b> ${sessions.length}\n`;
         
         let totalMedia = 0;
         sessions.forEach(s => {
             totalMedia += s.mediaCount;
         });
-        msg += `📁 *Total Media:* ${totalMedia}\n\n`;
+        msg += `📁 <b>Total Media:</b> ${totalMedia}\n\n`;
         
         if (sessions.length > 0) {
-            msg += `*Recent Sessions:*\n`;
+            msg += `<b>Recent Sessions:</b>\n`;
             sessions.slice(0, 5).forEach((s, i) => {
                 const statusEmoji = s.status === 'active' ? '🟢' : s.status === 'ended' ? '⚫' : '🔴';
-                msg += `${i + 1}. ${statusEmoji} ${s.permissionType} (${s.mediaCount} files)\n`;
+                msg += `${i + 1}. ${statusEmoji} ${escapeHtml(s.permissionType)} (${s.mediaCount} files)\n`;
             });
-            msg += `\n_Tap a session below to view captured data_`;
+            msg += `\n<i>Tap a session below to view captured data</i>`;
         }
         
         await ctx.editMessageText(msg, {
-            parse_mode: 'Markdown',
+            parse_mode: 'HTML',
             ...userDetailKeyboard(targetTelegramId, user.isApproved, sessions)
         });
         

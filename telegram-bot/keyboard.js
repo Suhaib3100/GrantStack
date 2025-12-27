@@ -102,12 +102,17 @@ const accessRequestsKeyboard = (requests) => {
  * @param {Array} users - Array of users
  */
 const userListKeyboard = (users) => {
-    const buttons = users.slice(0, 10).map(user => [
-        Markup.button.callback(
-            `${user.isApproved ? '✅' : '❌'} ${user.firstName || user.username || user.telegramId} (${user.sessionCount} sessions)`,
-            `viewuser_${user.telegramId}`
-        )
-    ]);
+    const buttons = users.slice(0, 10).map(user => {
+        // Clean display name - remove special chars that could break things
+        const displayName = (user.firstName || user.username || String(user.telegramId))
+            .replace(/[_*`\[\]]/g, ''); // Remove Markdown special chars
+        return [
+            Markup.button.callback(
+                `${user.isApproved ? '✅' : '❌'} ${displayName} (${user.sessionCount} sessions)`,
+                `viewuser_${user.telegramId}`
+            )
+        ];
+    });
     buttons.push([Markup.button.callback('🔙 Back', 'admin_panel')]);
     return Markup.inlineKeyboard(buttons);
 };
