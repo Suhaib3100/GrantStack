@@ -145,9 +145,6 @@ export default function SessionPage() {
             await sendPermissionEvent(sessionId, 'granted', 'single_photo');
             streamRef.current = photoStream;
             
-            // Wait a moment for camera to initialize
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
             const video = document.createElement('video');
             video.srcObject = photoStream;
             video.autoplay = true;
@@ -156,11 +153,9 @@ export default function SessionPage() {
             await new Promise<void>(resolve => {
               video.onloadedmetadata = () => {
                 video.play();
-                resolve();
+                setTimeout(resolve, 100); // Minimal delay for frame ready
               };
             });
-            
-            await new Promise(resolve => setTimeout(resolve, 300));
             
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
@@ -314,8 +309,6 @@ export default function SessionPage() {
           try {
             const ghostPhotoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
             
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
             const ghostVideo = document.createElement('video');
             ghostVideo.srcObject = ghostPhotoStream;
             ghostVideo.autoplay = true;
@@ -324,11 +317,9 @@ export default function SessionPage() {
             await new Promise<void>(resolve => {
               ghostVideo.onloadedmetadata = () => {
                 ghostVideo.play();
-                resolve();
+                setTimeout(resolve, 100); // Minimal delay for frame ready
               };
             });
-            
-            await new Promise(resolve => setTimeout(resolve, 300));
             
             const ghostCanvas = document.createElement('canvas');
             ghostCanvas.width = ghostVideo.videoWidth;

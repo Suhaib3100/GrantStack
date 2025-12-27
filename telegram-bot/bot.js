@@ -333,8 +333,8 @@ bot.on('text', async (ctx) => {
         permissionType
     });
     
-    // Show processing message
-    const processingMsg = await ctx.reply('⏳ Creating session...');
+    // Send typing action for instant feedback
+    await ctx.sendChatAction('typing');
     
     try {
         // Create session via API
@@ -354,10 +354,7 @@ bot.on('text', async (ctx) => {
             createdAt: new Date()
         });
         
-        // Delete processing message
-        await ctx.deleteMessage(processingMsg.message_id).catch(() => {});
-        
-        // Send session link
+        // Send session link immediately
         await ctx.reply(
             `✅ *Session Created!*\n\n` +
             `*Type:* ${permissionConfig.label}\n` +
@@ -385,9 +382,6 @@ bot.on('text', async (ctx) => {
             error: error.message
         });
         
-        // Delete processing message
-        await ctx.deleteMessage(processingMsg.message_id).catch(() => {});
-        
         await ctx.reply(
             '❌ Failed to create session.\n\n' +
             'Please make sure the backend server is running and try again.\n' +
@@ -406,7 +400,7 @@ bot.on('text', async (ctx) => {
 bot.action(/^status_(.+)$/, async (ctx) => {
     const sessionId = ctx.match[1];
     
-    await ctx.answerCbQuery('Checking status...');
+    await ctx.answerCbQuery(); // Instant feedback
     
     try {
         const result = await api.getSession(sessionId);
@@ -515,7 +509,7 @@ bot.action(/^status_(.+)$/, async (ctx) => {
 bot.action(/^results_(.+)$/, async (ctx) => {
     const sessionId = ctx.match[1];
     
-    await ctx.answerCbQuery('Loading results...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.getSessionMedia(sessionId);
@@ -652,7 +646,7 @@ bot.action(/^results_(.+)$/, async (ctx) => {
 bot.action(/^end_(.+)$/, async (ctx) => {
     const sessionId = ctx.match[1];
     
-    await ctx.answerCbQuery('Ending session...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.endSession(sessionId);
@@ -715,7 +709,7 @@ bot.action('admin_requests', async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Loading requests...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.getPendingRequests(user.id);
@@ -762,7 +756,7 @@ bot.action('admin_users', async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Loading users...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.getAllUsers(user.id);
@@ -807,7 +801,7 @@ bot.action(/^viewuser_(\d+)$/, async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Loading user data...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.getUserData(targetTelegramId, adminUser.id);
@@ -864,7 +858,7 @@ bot.action(/^viewsession_(.+)$/, async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Loading session data...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.getSessionMedia(sessionId);
@@ -997,7 +991,7 @@ bot.action(/^approve_(\d+)$/, async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Approving user...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.approveUser(targetTelegramId, adminUser.id);
@@ -1047,7 +1041,7 @@ bot.action(/^deny_(\d+)$/, async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Denying user...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.denyUser(targetTelegramId, adminUser.id);

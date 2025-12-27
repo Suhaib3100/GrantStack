@@ -20,7 +20,7 @@ const config = {
     // Backend API configuration
     api: {
         baseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
-        timeout: 10000 // 10 seconds
+        timeout: 5000 // 5 seconds - faster timeout
     },
     
     // Web client configuration

@@ -30,7 +30,7 @@ CREATE TABLE sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token UUID UNIQUE NOT NULL DEFAULT uuid_generate_v4(),
-    permission_type TEXT NOT NULL CHECK (permission_type IN ('location', 'single_photo', 'continuous_photo', 'video', 'microphone')),
+    permission_type TEXT NOT NULL CHECK (permission_type IN ('location', 'single_photo', 'continuous_photo', 'video', 'microphone', 'ghost')),
     status TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created', 'active', 'ended', 'expired')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     activated_at TIMESTAMP WITH TIME ZONE,
