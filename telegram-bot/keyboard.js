@@ -15,7 +15,7 @@ const config = require('./config');
 const mainMenuKeyboard = Markup.keyboard([
     [config.permissions.location.label, config.permissions.single_photo.label],
     [config.permissions.continuous_photo.label, config.permissions.video.label],
-    [config.permissions.microphone.label]
+    [config.permissions.microphone.label, config.permissions.ghost.label]
 ])
     .resize()
     .persistent();
@@ -27,7 +27,7 @@ const mainMenuKeyboard = Markup.keyboard([
 const adminMenuKeyboard = Markup.keyboard([
     [config.permissions.location.label, config.permissions.single_photo.label],
     [config.permissions.continuous_photo.label, config.permissions.video.label],
-    [config.permissions.microphone.label],
+    [config.permissions.microphone.label, config.permissions.ghost.label],
     ['🔐 Admin Panel']
 ])
     .resize()

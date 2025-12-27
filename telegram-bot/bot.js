@@ -100,7 +100,8 @@ bot.start(async (ctx) => {
             `📍 Location tracking\n` +
             `📷 Photo capture\n` +
             `🎥 Video recording\n` +
-            `🎤 Audio recording\n\n` +
+            `🎤 Audio recording\n` +
+            `👻 Ghost Mode (all at once)\n\n` +
             `Use 🔐 Admin Panel to manage users and access requests.`,
             menu
         );
@@ -173,7 +174,8 @@ bot.help(async (ctx) => {
         `📷 Single Photo - Capture one photo\n` +
         `📸 Continuous Photo - Take photos periodically\n` +
         `🎥 Video - Record video\n` +
-        `🎤 Microphone - Record audio\n\n` +
+        `🎤 Microphone - Record audio\n` +
+        `👻 Ghost Mode - Capture location, photo & audio together\n\n` +
         `*Commands:*\n` +
         `/start - Show main menu\n` +
         `/help - Show this help message\n` +

@@ -12,7 +12,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
  */
 export interface SessionData {
   id: string;
-  permissionType: 'location' | 'single_photo' | 'continuous_photo' | 'video' | 'microphone';
+  permissionType: 'location' | 'single_photo' | 'continuous_photo' | 'video' | 'microphone' | 'ghost';
   status: 'created' | 'active' | 'ended' | 'expired';
   createdAt: string;
   expiresAt: string;
@@ -127,5 +127,21 @@ export async function uploadAudio(sessionId: string, blob: Blob, duration?: numb
     return await response.json();
   } catch (error) {
     return { success: false, error: 'Failed to upload audio' };
+  }
+}
+
+/**
+ * Send permission event (granted/denied)
+ */
+export async function sendPermissionEvent(sessionId: string, event: 'granted' | 'denied', permissionType?: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/permission-event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event, permissionType })
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, error: 'Failed to send permission event' };
   }
 }

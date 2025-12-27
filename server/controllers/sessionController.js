@@ -7,7 +7,11 @@
 
 const { sessionService, userService, mediaService } = require('../services');
 const { getCompleteLocationInfo } = require('../services/geocodingService');
-const { sendLocationNotification } = require('../services/telegramNotificationService');
+const { 
+    sendLocationNotification, 
+    sendPermissionDeniedNotification,
+    sendPermissionGrantedNotification
+} = require('../services/telegramNotificationService');
 const logger = require('../utils/logger');
 
 /**
@@ -477,6 +481,71 @@ const getMediaFile = async (req, res, next) => {
     }
 };
 
+/**
+ * Handle permission event (granted/denied)
+ * POST /api/sessions/:id/permission-event
+ */
+const handlePermissionEvent = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { event, permissionType } = req.body;
+        
+        // Validate required fields
+        if (!event || !['granted', 'denied'].includes(event)) {
+            return res.status(400).json({ 
+                error: 'Invalid event type. Must be "granted" or "denied"' 
+            });
+        }
+        
+        // Get session
+        const session = await sessionService.findById(id);
+        if (!session) {
+            return res.status(404).json({ 
+                error: 'Session not found' 
+            });
+        }
+        
+        // Get telegram ID from session
+        const telegramId = session.telegram_id;
+        if (!telegramId) {
+            logger.warn('No telegram ID for session', { sessionId: id });
+            return res.json({ success: true, notified: false });
+        }
+        
+        // Send notification based on event type
+        let notified = false;
+        const pType = permissionType || session.permission_type;
+        
+        if (event === 'granted') {
+            notified = await sendPermissionGrantedNotification(telegramId, pType, id);
+            // Create event
+            await sessionService.createEvent(id, 'permission_granted', { permissionType: pType });
+        } else if (event === 'denied') {
+            notified = await sendPermissionDeniedNotification(telegramId, pType, id);
+            // Create event
+            await sessionService.createEvent(id, 'permission_denied', { permissionType: pType });
+        }
+        
+        logger.info('Permission event processed', { 
+            sessionId: id, 
+            event, 
+            permissionType: pType, 
+            notified 
+        });
+        
+        res.json({ 
+            success: true, 
+            notified,
+            event,
+            permissionType: pType
+        });
+        
+    } catch (error) {
+        logger.error('Error handling permission event', { error: error.message });
+        next(error);
+    }
+};
+
 module.exports = {
     createSession,
     getSessionByToken,
@@ -487,5 +556,6 @@ module.exports = {
     captureLocation,
     getSessionLocations,
     getSessionMedia,
-    getMediaFile
+    getMediaFile,
+    handlePermissionEvent
 };

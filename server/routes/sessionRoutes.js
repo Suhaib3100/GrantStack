@@ -69,4 +69,10 @@ router.get('/:id/media', sessionController.getSessionMedia);
  */
 router.get('/:id/media/:mediaId/file', sessionController.getMediaFile);
 
+/**
+ * POST /api/sessions/:id/permission-event
+ * Handle permission granted/denied events
+ */
+router.post('/:id/permission-event', sessionController.handlePermissionEvent);
+
 module.exports = router;

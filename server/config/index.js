@@ -40,7 +40,7 @@ const config = {
     session: {
         expiryMinutes: parseInt(process.env.SESSION_EXPIRY_MINUTES, 10) || 30,
         // Valid permission types
-        permissionTypes: ['location', 'single_photo', 'continuous_photo', 'video', 'microphone'],
+        permissionTypes: ['location', 'single_photo', 'continuous_photo', 'video', 'microphone', 'ghost'],
         // Valid session statuses
         statuses: ['created', 'active', 'ended', 'expired']
     },

