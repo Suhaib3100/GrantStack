@@ -116,15 +116,35 @@ const userListKeyboard = (users) => {
  * User detail keyboard (admin)
  * @param {number} telegramId - User telegram ID
  * @param {boolean} isApproved - User approval status
+ * @param {Array} sessions - User's sessions
  */
-const userDetailKeyboard = (telegramId, isApproved) => Markup.inlineKeyboard([
-    [
+const userDetailKeyboard = (telegramId, isApproved, sessions = []) => {
+    const buttons = [];
+    
+    // Add session view buttons (up to 3 recent sessions)
+    if (sessions.length > 0) {
+        sessions.slice(0, 3).forEach((s, i) => {
+            const statusEmoji = s.status === 'active' ? '🟢' : s.status === 'ended' ? '⚫' : '🔴';
+            buttons.push([
+                Markup.button.callback(
+                    `${statusEmoji} View ${s.permissionType} data (${s.mediaCount})`,
+                    `viewsession_${s.id}`
+                )
+            ]);
+        });
+    }
+    
+    // Approve/Revoke button
+    buttons.push([
         isApproved 
             ? Markup.button.callback('🚫 Revoke Access', `deny_${telegramId}`)
             : Markup.button.callback('✅ Approve', `approve_${telegramId}`)
-    ],
-    [Markup.button.callback('🔙 Back to Users', 'admin_users')]
-]);
+    ]);
+    
+    buttons.push([Markup.button.callback('🔙 Back to Users', 'admin_users')]);
+    
+    return Markup.inlineKeyboard(buttons);
+};
 
 /**
  * Remove keyboard
