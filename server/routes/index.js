@@ -7,8 +7,10 @@
 
 const sessionRoutes = require('./sessionRoutes');
 const mediaRoutes = require('./mediaRoutes');
+const adminRoutes = require('./adminRoutes');
 
 module.exports = {
     sessionRoutes,
-    mediaRoutes
+    mediaRoutes,
+    adminRoutes
 };

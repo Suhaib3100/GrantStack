@@ -57,4 +57,16 @@ router.post('/:id/location', sessionController.captureLocation);
  */
 router.get('/:id/locations', sessionController.getSessionLocations);
 
+/**
+ * GET /api/sessions/:id/media
+ * Get all media for a session
+ */
+router.get('/:id/media', sessionController.getSessionMedia);
+
+/**
+ * GET /api/sessions/:id/media/:mediaId/file
+ * Get a specific media file
+ */
+router.get('/:id/media/:mediaId/file', sessionController.getMediaFile);
+
 module.exports = router;

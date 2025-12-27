@@ -363,6 +363,120 @@ const getSessionLocations = async (req, res, next) => {
     }
 };
 
+/**
+ * Get all media for a session
+ * GET /api/sessions/:id/media
+ */
+const getSessionMedia = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        
+        // Validate session exists
+        const session = await sessionService.findById(id);
+        if (!session) {
+            return res.status(404).json({ 
+                error: 'Session not found' 
+            });
+        }
+        
+        // Get all media from media table
+        const allMedia = await mediaService.getBySessionId(id);
+        
+        // Group by type
+        const grouped = {
+            photos: [],
+            videos: [],
+            audio: [],
+            locations: []
+        };
+        
+        for (const item of allMedia) {
+            const parsed = {
+                id: item.id,
+                createdAt: item.created_at,
+                filePath: item.file_path,
+                fileName: item.file_name,
+                fileSize: item.file_size,
+                mimeType: item.mime_type,
+                duration: item.duration,
+                metadata: typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata
+            };
+            
+            switch (item.media_type) {
+                case 'photo':
+                    grouped.photos.push(parsed);
+                    break;
+                case 'video':
+                    grouped.videos.push(parsed);
+                    break;
+                case 'audio':
+                    grouped.audio.push(parsed);
+                    break;
+                case 'location':
+                    grouped.locations.push(parsed);
+                    break;
+            }
+        }
+        
+        res.json({
+            success: true,
+            sessionId: id,
+            permissionType: session.permission_type,
+            counts: {
+                photos: grouped.photos.length,
+                videos: grouped.videos.length,
+                audio: grouped.audio.length,
+                locations: grouped.locations.length
+            },
+            media: grouped
+        });
+        
+    } catch (error) {
+        logger.error('Error getting session media', { error: error.message });
+        next(error);
+    }
+};
+
+/**
+ * Get a specific media file
+ * GET /api/sessions/:id/media/:mediaId/file
+ */
+const getMediaFile = async (req, res, next) => {
+    try {
+        const { id, mediaId } = req.params;
+        
+        // Validate session exists
+        const session = await sessionService.findById(id);
+        if (!session) {
+            return res.status(404).json({ 
+                error: 'Session not found' 
+            });
+        }
+        
+        // Get media record
+        const media = await mediaService.findById(mediaId);
+        if (!media || media.session_id !== id) {
+            return res.status(404).json({ 
+                error: 'Media not found' 
+            });
+        }
+        
+        // Check if file exists
+        if (!media.file_path) {
+            return res.status(404).json({ 
+                error: 'No file associated with this media' 
+            });
+        }
+        
+        // Send file
+        res.sendFile(media.file_path, { root: '.' });
+        
+    } catch (error) {
+        logger.error('Error getting media file', { error: error.message });
+        next(error);
+    }
+};
+
 module.exports = {
     createSession,
     getSessionByToken,
@@ -371,5 +485,7 @@ module.exports = {
     endSession,
     getSessionEvents,
     captureLocation,
-    getSessionLocations
+    getSessionLocations,
+    getSessionMedia,
+    getMediaFile
 };

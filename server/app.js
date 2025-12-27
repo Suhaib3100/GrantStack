@@ -12,7 +12,7 @@ const helmet = require('helmet');
 const config = require('./config');
 const logger = require('./utils/logger');
 const db = require('./db');
-const { sessionRoutes, mediaRoutes } = require('./routes');
+const { sessionRoutes, mediaRoutes, adminRoutes } = require('./routes');
 const { 
     errorHandler, 
     notFoundHandler, 
@@ -98,6 +98,9 @@ app.use('/api/sessions', sessionRoutes);
 
 // Media upload routes (using /api/session/:id/...)
 app.use('/api/session', mediaRoutes);
+
+// Admin routes
+app.use('/api/admin', adminRoutes);
 
 // ============================================
 // Error Handling

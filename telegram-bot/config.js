@@ -11,6 +11,12 @@ const config = {
     // Telegram Bot Token
     botToken: process.env.BOT_TOKEN,
     
+    // Admin configuration
+    admin: {
+        telegramId: 6737328498,
+        contact: '@SuhaibKing01'
+    },
+    
     // Backend API configuration
     api: {
         baseUrl: process.env.API_BASE_URL || 'http://localhost:3001',

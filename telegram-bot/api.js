@@ -112,10 +112,117 @@ const getSessionLocations = async (sessionId) => {
     return response.data;
 };
 
+/**
+ * Get all media for a session
+ * @param {string} sessionId - Session UUID
+ * @returns {Promise<Object>} Media data
+ */
+const getSessionMedia = async (sessionId) => {
+    const response = await apiClient.get(`/api/sessions/${sessionId}/media`);
+    return response.data;
+};
+
+// ============================================
+// Admin API Functions
+// ============================================
+
+/**
+ * Check user status (admin/approved)
+ * @param {number} telegramId - Telegram user ID
+ * @returns {Promise<Object>} User status
+ */
+const checkUserStatus = async (telegramId) => {
+    const response = await apiClient.get(`/api/admin/check/${telegramId}`);
+    return response.data;
+};
+
+/**
+ * Request access for a user
+ * @param {Object} userData - User data
+ * @returns {Promise<Object>} Result
+ */
+const requestAccess = async (userData) => {
+    const response = await apiClient.post('/api/admin/request-access', {
+        telegramId: userData.id,
+        username: userData.username,
+        firstName: userData.first_name,
+        lastName: userData.last_name
+    });
+    return response.data;
+};
+
+/**
+ * Get pending access requests (admin only)
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} Pending requests
+ */
+const getPendingRequests = async (adminId) => {
+    const response = await apiClient.get(`/api/admin/pending-requests?adminId=${adminId}`);
+    return response.data;
+};
+
+/**
+ * Approve a user (admin only)
+ * @param {number} telegramId - User to approve
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} Result
+ */
+const approveUser = async (telegramId, adminId) => {
+    const response = await apiClient.post('/api/admin/approve', {
+        telegramId,
+        adminId
+    });
+    return response.data;
+};
+
+/**
+ * Deny a user (admin only)
+ * @param {number} telegramId - User to deny
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} Result
+ */
+const denyUser = async (telegramId, adminId) => {
+    const response = await apiClient.post('/api/admin/deny', {
+        telegramId,
+        adminId
+    });
+    return response.data;
+};
+
+/**
+ * Get all users with data (admin only)
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} Users list
+ */
+const getAllUsers = async (adminId) => {
+    const response = await apiClient.get(`/api/admin/users?adminId=${adminId}`);
+    return response.data;
+};
+
+/**
+ * Get specific user's data (admin only)
+ * @param {number} targetTelegramId - User to view
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} User data with sessions
+ */
+const getUserData = async (targetTelegramId, adminId) => {
+    const response = await apiClient.get(`/api/admin/user/${targetTelegramId}/data?adminId=${adminId}`);
+    return response.data;
+};
+
 module.exports = {
     createSession,
     getSession,
     endSession,
     checkHealth,
-    getSessionLocations
+    getSessionLocations,
+    getSessionMedia,
+    // Admin functions
+    checkUserStatus,
+    requestAccess,
+    getPendingRequests,
+    approveUser,
+    denyUser,
+    getAllUsers,
+    getUserData
 };
