@@ -834,3 +834,5 @@ TypeError: sessionService.logEvent is not a function
 2025-12-27 18:12:20 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"306ms","rows":1}
 2025-12-27 18:12:20 [INFO]: Expired old sessions {"count":1}
 2025-12-27 18:13:20 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"303ms","rows":0}
+2025-12-27 18:14:20 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"305ms","rows":0}
+2025-12-27 18:15:14 [INFO]: Shutting down server...

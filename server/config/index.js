@@ -18,15 +18,15 @@ const config = {
 
     // Database configuration
     database: {
-        // Support both DATABASE_URI and individual parameters
-        connectionString: process.env.DATABASE_URI || null,
+        // Support DATABASE_URL, DATABASE_URI, or individual parameters
+        connectionString: process.env.DATABASE_URL || process.env.DATABASE_URI || null,
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT, 10) || 5432,
         name: process.env.DB_NAME || 'tg_bot_track',
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || '',
         // SSL configuration for cloud databases
-        ssl: process.env.DATABASE_URI ? { rejectUnauthorized: false } : false,
+        ssl: (process.env.DATABASE_URL || process.env.DATABASE_URI) ? { rejectUnauthorized: false } : false,
         // Connection pool settings
         pool: {
             min: 2,
