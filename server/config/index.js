@@ -68,7 +68,10 @@ const config = {
 
     // CORS configuration
     cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+        // Support comma-separated origins for multiple domains
+        origin: process.env.CORS_ORIGIN 
+            ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+            : ['http://localhost:3000'],
         credentials: true
     },
 

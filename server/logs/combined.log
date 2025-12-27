@@ -811,3 +811,26 @@ TypeError: sessionService.logEvent is not a function
 2025-12-27 18:05:31 [DEBUG]: HTTP Request {"method":"GET","url":"/api/sessions/571feba2-6bcf-4b51-9214-18582a030637/media/dd731c20-dbd1-435c-8abf-0a0b37c54735/file","status":200,"duration":"598ms"}
 2025-12-27 18:06:10 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"293ms","rows":1}
 2025-12-27 18:06:10 [INFO]: Expired old sessions {"count":1}
+2025-12-27 18:07:10 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"291ms","rows":0}
+2025-12-27 18:08:10 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"292ms","rows":0}
+2025-12-27 18:09:10 [DEBUG]: New client connected to database pool
+2025-12-27 18:09:10 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"5105ms","rows":1}
+2025-12-27 18:09:10 [INFO]: Database connection successful
+2025-12-27 18:09:10 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 18:09:10 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 18:09:10 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 18:09:10 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 18:09:10 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":["http://localhost:3000"]}
+2025-12-27 18:09:24 [DEBUG]: New client connected to database pool
+2025-12-27 18:09:24 [DEBUG]: Executed query {"query":"SELECT NOW()","duration":"5076ms","rows":1}
+2025-12-27 18:09:24 [INFO]: Database connection successful
+2025-12-27 18:09:24 [DEBUG]: Storage directory ensured {"path":"./storage"}
+2025-12-27 18:09:24 [DEBUG]: Storage directory ensured {"path":"./storage/photos"}
+2025-12-27 18:09:24 [DEBUG]: Storage directory ensured {"path":"./storage/videos"}
+2025-12-27 18:09:24 [DEBUG]: Storage directory ensured {"path":"./storage/audio"}
+2025-12-27 18:09:24 [INFO]: Server started {"port":3001,"environment":"development","corsOrigin":["http://localhost:3000"]}
+2025-12-27 18:10:20 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"304ms","rows":0}
+2025-12-27 18:11:20 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"304ms","rows":0}
+2025-12-27 18:12:20 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"306ms","rows":1}
+2025-12-27 18:12:20 [INFO]: Expired old sessions {"count":1}
+2025-12-27 18:13:20 [DEBUG]: Executed query {"query":"UPDATE sessions \n         SET status = 'expired', ended_at = NOW()\n         WHERE status IN ('create","duration":"303ms","rows":0}
