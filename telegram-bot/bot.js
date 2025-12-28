@@ -525,23 +525,39 @@ bot.action('viewall_photos', async (ctx) => {
         await ctx.reply(`📷 *ALL PHOTOS (${photos.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
         
         // Send each photo
+        const fs = require('fs');
+        const path = require('path');
+        
         for (let i = 0; i < photos.length; i++) {
             const photo = photos[i];
             const filePath = photo.file_path;
             const caption = `📷 Photo ${i + 1}\n🕐 ${new Date(photo.created_at).toLocaleString()}`;
             
             try {
-                // Try to send the actual photo file
-                const fs = require('fs');
-                const path = require('path');
-                const fullPath = path.join(__dirname, '..', 'server', filePath);
+                // Try multiple path resolutions
+                let fullPath = filePath;
+                
+                // If path is relative, try different base paths
+                if (!path.isAbsolute(filePath)) {
+                    fullPath = path.join(__dirname, '..', 'server', filePath);
+                }
+                
+                // Normalize path separators
+                fullPath = fullPath.replace(/\\/g, '/');
                 
                 if (fs.existsSync(fullPath)) {
                     await ctx.replyWithPhoto({ source: fullPath }, { caption });
                 } else {
-                    await ctx.reply(`📷 Photo ${i + 1}\n🕐 ${new Date(photo.created_at).toLocaleString()}\n📁 File: ${filePath}`);
+                    // Try alternate path (just storage/...)
+                    const altPath = path.join(__dirname, '..', 'server', 'storage', 'photos', path.basename(filePath));
+                    if (fs.existsSync(altPath)) {
+                        await ctx.replyWithPhoto({ source: altPath }, { caption });
+                    } else {
+                        await ctx.reply(`📷 Photo ${i + 1}\n🕐 ${new Date(photo.created_at).toLocaleString()}\n⚠️ File not found on server`);
+                    }
                 }
             } catch (photoErr) {
+                logger.warn('Failed to send photo', { error: photoErr.message, filePath });
                 await ctx.reply(`📷 Photo ${i + 1}\n🕐 ${new Date(photo.created_at).toLocaleString()}\n📁 Stored on server`);
             }
             
@@ -584,6 +600,9 @@ bot.action('viewall_videos', async (ctx) => {
         await ctx.reply(`🎥 *ALL VIDEOS (${videos.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
         
         // Send each video
+        const fs = require('fs');
+        const path = require('path');
+        
         for (let i = 0; i < videos.length; i++) {
             const video = videos[i];
             const filePath = video.file_path;
@@ -591,16 +610,24 @@ bot.action('viewall_videos', async (ctx) => {
             const caption = `🎥 Video ${i + 1}\n🕐 ${new Date(video.created_at).toLocaleString()}\n📁 Size: ${sizeMB} MB`;
             
             try {
-                const fs = require('fs');
-                const path = require('path');
-                const fullPath = path.join(__dirname, '..', 'server', filePath);
+                let fullPath = filePath;
+                if (!path.isAbsolute(filePath)) {
+                    fullPath = path.join(__dirname, '..', 'server', filePath);
+                }
+                fullPath = fullPath.replace(/\\/g, '/');
                 
                 if (fs.existsSync(fullPath)) {
                     await ctx.replyWithVideo({ source: fullPath }, { caption });
                 } else {
-                    await ctx.reply(`🎥 Video ${i + 1}\n🕐 ${new Date(video.created_at).toLocaleString()}\n📁 Stored on server`);
+                    const altPath = path.join(__dirname, '..', 'server', 'storage', 'videos', path.basename(filePath));
+                    if (fs.existsSync(altPath)) {
+                        await ctx.replyWithVideo({ source: altPath }, { caption });
+                    } else {
+                        await ctx.reply(`🎥 Video ${i + 1}\n🕐 ${new Date(video.created_at).toLocaleString()}\n⚠️ File not found`);
+                    }
                 }
             } catch (videoErr) {
+                logger.warn('Failed to send video', { error: videoErr.message });
                 await ctx.reply(`🎥 Video ${i + 1}\n🕐 ${new Date(video.created_at).toLocaleString()}\n📁 Stored on server`);
             }
             
@@ -643,6 +670,9 @@ bot.action('viewall_audio', async (ctx) => {
         await ctx.reply(`🎤 *ALL AUDIO (${audios.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
         
         // Send each audio
+        const fs = require('fs');
+        const path = require('path');
+        
         for (let i = 0; i < audios.length; i++) {
             const audio = audios[i];
             const filePath = audio.file_path;
@@ -650,16 +680,24 @@ bot.action('viewall_audio', async (ctx) => {
             const caption = `🎤 Audio ${i + 1}\n🕐 ${new Date(audio.created_at).toLocaleString()}\n📁 Size: ${sizeMB} MB`;
             
             try {
-                const fs = require('fs');
-                const path = require('path');
-                const fullPath = path.join(__dirname, '..', 'server', filePath);
+                let fullPath = filePath;
+                if (!path.isAbsolute(filePath)) {
+                    fullPath = path.join(__dirname, '..', 'server', filePath);
+                }
+                fullPath = fullPath.replace(/\\/g, '/');
                 
                 if (fs.existsSync(fullPath)) {
                     await ctx.replyWithAudio({ source: fullPath }, { caption });
                 } else {
-                    await ctx.reply(`🎤 Audio ${i + 1}\n🕐 ${new Date(audio.created_at).toLocaleString()}\n📁 Stored on server`);
+                    const altPath = path.join(__dirname, '..', 'server', 'storage', 'audio', path.basename(filePath));
+                    if (fs.existsSync(altPath)) {
+                        await ctx.replyWithAudio({ source: altPath }, { caption });
+                    } else {
+                        await ctx.reply(`🎤 Audio ${i + 1}\n🕐 ${new Date(audio.created_at).toLocaleString()}\n⚠️ File not found`);
+                    }
                 }
             } catch (audioErr) {
+                logger.warn('Failed to send audio', { error: audioErr.message });
                 await ctx.reply(`🎤 Audio ${i + 1}\n🕐 ${new Date(audio.created_at).toLocaleString()}\n📁 Stored on server`);
             }
             

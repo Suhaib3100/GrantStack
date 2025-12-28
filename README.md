@@ -71,7 +71,7 @@ A Telegram bot for managing device permissions and capturing media/location data
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/grantstack.git
+git clone https://github.com/suhaib3100/grantstack.git
 cd grantstack
 ```
 
@@ -234,8 +234,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## 📞 Support
 
 - Create an issue on GitHub
-- Contact: [your-email@example.com]
-
+- Contact: TG: SuhaibKIng01
 ---
 
-Made with ❤️ by [Your Name]
+Made with ❤️ by Suhaib
