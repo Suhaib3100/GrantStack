@@ -376,7 +376,8 @@ const getAllMediaByType = async (req, res) => {
         const result = await db.query(`
             SELECT m.*, u.telegram_id, u.username, u.first_name
             FROM media m
-            LEFT JOIN users u ON m.user_id = u.id
+            LEFT JOIN sessions s ON m.session_id = s.id
+            LEFT JOIN users u ON s.user_id = u.id
             WHERE m.media_type = $1
             ORDER BY m.created_at DESC
             LIMIT 100
