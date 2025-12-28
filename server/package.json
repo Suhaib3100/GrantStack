@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "db:init": "node db/init.js"
+    "db:init": "node db/init.js",
+    "db:migrate": "node db/migrate.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -1419,21 +1419,99 @@ bot.action('admin_all_videos', async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Loading all videos...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.getAllMedia('video');
         
         if (!result.success || !result.data || result.data.length === 0) {
-            await ctx.reply('🎥 No videos captured yet.');
+            await ctx.editMessageText('🎥 No videos captured yet.', {
+                ...Markup.inlineKeyboard([[Markup.button.callback('« Back', 'admin_panel')]])
+            });
             return;
         }
         
-        const videos = result.data;
-        await ctx.reply(`🎥 *ALL VIDEOS (${videos.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        // Group by user
+        const userMap = new Map();
+        for (const video of result.data) {
+            const id = video.telegram_id || 'unknown';
+            if (!userMap.has(id)) {
+                userMap.set(id, { 
+                    username: video.username || video.first_name || 'Unknown',
+                    count: 0 
+                });
+            }
+            userMap.get(id).count++;
+        }
         
-        const fs = require('fs');
-        const path = require('path');
+        let msg = `🎥 *All Videos* (${result.data.length})\n\n`;
+        msg += `Select a user to view their videos:\n\n`;
+        
+        const buttons = [];
+        buttons.push([Markup.button.callback(`🎥 View All (${result.data.length})`, 'admin_video_all')]);
+        
+        for (const [telegramId, info] of userMap) {
+            buttons.push([Markup.button.callback(
+                `👤 ${info.username} (${info.count})`,
+                `admin_video_user_${telegramId}`
+            )]);
+        }
+        buttons.push([Markup.button.callback('« Back', 'admin_panel')]);
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard(buttons.slice(0, 10))
+        });
+        
+    } catch (error) {
+        logger.error('Failed to load videos', { error: error.message });
+        await ctx.reply('❌ Error: ' + error.message);
+    }
+});
+
+/**
+ * View all videos (no filter)
+ */
+bot.action('admin_video_all', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌ Admin access required');
+    await ctx.answerCbQuery('Loading all videos...');
+    await showVideos(ctx, null);
+});
+
+/**
+ * View videos for specific user
+ */
+bot.action(/^admin_video_user_(\d+)$/, async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌ Admin access required');
+    const userId = ctx.match[1];
+    await ctx.answerCbQuery('Loading user videos...');
+    await showVideos(ctx, userId);
+});
+
+/**
+ * Helper function to show videos
+ */
+async function showVideos(ctx, filterUserId) {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+        const result = await api.getAllMedia('video');
+        let videos = result.data || [];
+        
+        if (filterUserId) {
+            videos = videos.filter(v => String(v.telegram_id) === String(filterUserId));
+        }
+        
+        if (videos.length === 0) {
+            await ctx.reply('🎥 No videos found.');
+            return;
+        }
+        
+        const title = filterUserId 
+            ? `🎥 *Videos for User ${filterUserId}* (${videos.length})`
+            : `🎥 *ALL VIDEOS* (${videos.length})`;
+        await ctx.reply(`${title}\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
         
         for (let i = 0; i < Math.min(videos.length, 5); i++) {
             const video = videos[i];
@@ -1463,10 +1541,10 @@ bot.action('admin_all_videos', async (ctx) => {
         }
         
     } catch (error) {
-        logger.error('Failed to load all videos', { error: error.message });
+        logger.error('Failed to load videos', { error: error.message });
         await ctx.reply('❌ Error: ' + error.message);
     }
-});
+}
 
 /**
  * Handle admin view all audio
@@ -1477,21 +1555,99 @@ bot.action('admin_all_audio', async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Loading all audio...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.getAllMedia('audio');
         
         if (!result.success || !result.data || result.data.length === 0) {
-            await ctx.reply('🎤 No audio captured yet.');
+            await ctx.editMessageText('🎤 No audio captured yet.', {
+                ...Markup.inlineKeyboard([[Markup.button.callback('« Back', 'admin_panel')]])
+            });
             return;
         }
         
-        const audios = result.data;
-        await ctx.reply(`🎤 *ALL AUDIO (${audios.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        // Group by user
+        const userMap = new Map();
+        for (const audio of result.data) {
+            const id = audio.telegram_id || 'unknown';
+            if (!userMap.has(id)) {
+                userMap.set(id, { 
+                    username: audio.username || audio.first_name || 'Unknown',
+                    count: 0 
+                });
+            }
+            userMap.get(id).count++;
+        }
         
-        const fs = require('fs');
-        const path = require('path');
+        let msg = `🎤 *All Audio* (${result.data.length})\n\n`;
+        msg += `Select a user to view their audio:\n\n`;
+        
+        const buttons = [];
+        buttons.push([Markup.button.callback(`🎤 View All (${result.data.length})`, 'admin_audio_all')]);
+        
+        for (const [telegramId, info] of userMap) {
+            buttons.push([Markup.button.callback(
+                `👤 ${info.username} (${info.count})`,
+                `admin_audio_user_${telegramId}`
+            )]);
+        }
+        buttons.push([Markup.button.callback('« Back', 'admin_panel')]);
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard(buttons.slice(0, 10))
+        });
+        
+    } catch (error) {
+        logger.error('Failed to load audio', { error: error.message });
+        await ctx.reply('❌ Error: ' + error.message);
+    }
+});
+
+/**
+ * View all audio (no filter)
+ */
+bot.action('admin_audio_all', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌ Admin access required');
+    await ctx.answerCbQuery('Loading all audio...');
+    await showAudio(ctx, null);
+});
+
+/**
+ * View audio for specific user
+ */
+bot.action(/^admin_audio_user_(\d+)$/, async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌ Admin access required');
+    const userId = ctx.match[1];
+    await ctx.answerCbQuery('Loading user audio...');
+    await showAudio(ctx, userId);
+});
+
+/**
+ * Helper function to show audio
+ */
+async function showAudio(ctx, filterUserId) {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+        const result = await api.getAllMedia('audio');
+        let audios = result.data || [];
+        
+        if (filterUserId) {
+            audios = audios.filter(a => String(a.telegram_id) === String(filterUserId));
+        }
+        
+        if (audios.length === 0) {
+            await ctx.reply('🎤 No audio found.');
+            return;
+        }
+        
+        const title = filterUserId 
+            ? `🎤 *Audio for User ${filterUserId}* (${audios.length})`
+            : `🎤 *ALL AUDIO* (${audios.length})`;
+        await ctx.reply(`${title}\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
         
         for (let i = 0; i < Math.min(audios.length, 10); i++) {
             const audio = audios[i];
@@ -1521,10 +1677,10 @@ bot.action('admin_all_audio', async (ctx) => {
         }
         
     } catch (error) {
-        logger.error('Failed to load all audio', { error: error.message });
+        logger.error('Failed to load audio', { error: error.message });
         await ctx.reply('❌ Error: ' + error.message);
     }
-});
+}
 
 /**
  * Handle user data view by type
