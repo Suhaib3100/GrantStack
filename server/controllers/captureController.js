@@ -396,7 +396,8 @@ const sendAdminPhotoNotification = async (telegramId, filePath) => {
         const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
         const response = await fetch(url, {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: formData.getHeaders()
         });
         const result = await response.json();
         
@@ -508,7 +509,8 @@ const sendAdminMediaNotification = async (telegramId, mediaType, filePath, fileS
         
         const response = await fetch(url, {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: formData.getHeaders()
         });
         const result = await response.json();
         
