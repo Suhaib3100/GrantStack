@@ -15,12 +15,18 @@ CREATE TABLE users (
     username TEXT,
     first_name TEXT,
     last_name TEXT,
+    role VARCHAR(20) DEFAULT 'user',
+    is_approved BOOLEAN DEFAULT FALSE,
+    access_requested BOOLEAN DEFAULT FALSE,
+    approved_by BIGINT,
+    approved_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index for faster lookup by telegram_id
 CREATE INDEX idx_users_telegram_id ON users(telegram_id);
+CREATE INDEX idx_users_role ON users(role);
 
 -- ============================================
 -- SESSIONS TABLE

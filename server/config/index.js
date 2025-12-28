@@ -88,6 +88,11 @@ const config = {
     // Telegram configuration
     telegram: {
         botToken: process.env.TELEGRAM_BOT_TOKEN || ''
+    },
+
+    // Admin configuration
+    admin: {
+        telegramId: parseInt(process.env.ADMIN_TELEGRAM_ID, 10) || 6737328498
     }
 };
 

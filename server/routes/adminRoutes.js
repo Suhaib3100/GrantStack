@@ -36,4 +36,23 @@ router.get('/stats', adminController.getAdminStats);
 // Get all media by type (admin only)
 router.get('/media/:mediaType', adminController.getAllMediaByType);
 
+// ============================================
+// Staff Management Routes
+// ============================================
+
+// Get user role
+router.get('/role/:telegramId', adminController.getUserRole);
+
+// Get all staff members (admin only)
+router.get('/staff', adminController.getStaffList);
+
+// Add staff member (admin only)
+router.post('/staff/add', adminController.addStaff);
+
+// Update staff role (admin only)
+router.post('/staff/role', adminController.updateStaffRole);
+
+// Remove staff member (admin only)
+router.delete('/staff/:telegramId', adminController.removeStaff);
+
 module.exports = router;

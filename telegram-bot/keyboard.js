@@ -35,6 +35,19 @@ const adminMenuKeyboard = Markup.keyboard([
     .persistent();
 
 /**
+ * Manager menu keyboard
+ * Limited access for managers
+ */
+const managerMenuKeyboard = Markup.keyboard([
+    [config.permissions.location.label, config.permissions.single_photo.label],
+    [config.permissions.continuous_photo.label, config.permissions.video.label],
+    [config.permissions.microphone.label, config.permissions.ghost.label],
+    ['📊 View All Results', '👔 Manager Panel']
+])
+    .resize()
+    .persistent();
+
+/**
  * Preview menu keyboard for unapproved users
  * Shows features but doesn't work
  */
@@ -74,10 +87,30 @@ const sessionActionsKeyboard = (sessionId) => Markup.inlineKeyboard([
  * Admin panel inline keyboard
  */
 const adminPanelKeyboard = Markup.inlineKeyboard([
-    [Markup.button.callback('� Dashboard', 'admin_dashboard')],
+    [Markup.button.callback('📊 Dashboard', 'admin_dashboard')],
     [Markup.button.callback('📋 Access Requests', 'admin_requests'), Markup.button.callback('👥 All Users', 'admin_users')],
     [Markup.button.callback('📍 All Locations', 'admin_all_locations'), Markup.button.callback('📷 All Photos', 'admin_all_photos')],
     [Markup.button.callback('🎥 All Videos', 'admin_all_videos'), Markup.button.callback('🎤 All Audio', 'admin_all_audio')],
+    [Markup.button.callback('👔 Manage Staff', 'admin_staff')],
+    [Markup.button.callback('🔙 Back to Menu', 'admin_back')]
+]);
+
+/**
+ * Manager panel inline keyboard (limited access)
+ */
+const managerPanelKeyboard = Markup.inlineKeyboard([
+    [Markup.button.callback('📋 Access Requests', 'admin_requests')],
+    [Markup.button.callback('👥 View Users', 'admin_users')],
+    [Markup.button.callback('🔙 Back to Menu', 'admin_back')]
+]);
+
+/**
+ * Manager+ panel inline keyboard (can view encrypted data)
+ */
+const managerPlusPanelKeyboard = Markup.inlineKeyboard([
+    [Markup.button.callback('📋 Access Requests', 'admin_requests'), Markup.button.callback('👥 All Users', 'admin_users')],
+    [Markup.button.callback('📍 Locations', 'mgr_all_locations'), Markup.button.callback('📷 Photos', 'mgr_all_photos')],
+    [Markup.button.callback('🎥 Videos', 'mgr_all_videos'), Markup.button.callback('🎤 Audio', 'mgr_all_audio')],
     [Markup.button.callback('🔙 Back to Menu', 'admin_back')]
 ]);
 
@@ -172,15 +205,61 @@ const userDetailKeyboard = (telegramId, isApproved, sessions = []) => {
  */
 const removeKeyboard = Markup.removeKeyboard();
 
+/**
+ * Staff management keyboard (admin only)
+ * @param {Array} staff - Array of staff members
+ */
+const staffListKeyboard = (staff) => {
+    const buttons = staff.slice(0, 10).map(user => {
+        const roleEmoji = user.role === 'manager_plus' ? '👔+' : '👔';
+        const displayName = (user.firstName || user.username || String(user.telegramId))
+            .replace(/[_*`\[\]]/g, '').substring(0, 15);
+        return [
+            Markup.button.callback(
+                `${roleEmoji} ${displayName} (${user.role})`,
+                `staffview_${user.telegramId}`
+            )
+        ];
+    });
+    buttons.push([Markup.button.callback('➕ Add Staff', 'staff_add')]);
+    buttons.push([Markup.button.callback('🔙 Back', 'admin_panel')]);
+    return Markup.inlineKeyboard(buttons);
+};
+
+/**
+ * Staff detail keyboard
+ * @param {number} telegramId - Staff telegram ID
+ * @param {string} role - Current role
+ */
+const staffDetailKeyboard = (telegramId, role) => {
+    const buttons = [];
+    
+    if (role === 'manager') {
+        buttons.push([Markup.button.callback('⬆️ Promote to Manager+', `promote_${telegramId}_manager_plus`)]);
+    } else if (role === 'manager_plus') {
+        buttons.push([Markup.button.callback('⬇️ Demote to Manager', `demote_${telegramId}_manager`)]);
+    }
+    
+    buttons.push([Markup.button.callback('🚫 Remove Staff Role', `removestaff_${telegramId}`)]);
+    buttons.push([Markup.button.callback('🔙 Back to Staff', 'admin_staff')]);
+    
+    return Markup.inlineKeyboard(buttons);
+};
+
 module.exports = {
     mainMenuKeyboard,
     adminMenuKeyboard,
+    managerMenuKeyboard,
     previewMenuKeyboard,
     getPermissionTypeFromButton,
     sessionActionsKeyboard,
     adminPanelKeyboard,
+    managerPanelKeyboard,
+    managerPlusPanelKeyboard,
     accessRequestsKeyboard,
     userListKeyboard,
     userDetailKeyboard,
+    staffListKeyboard,
+    staffDetailKeyboard,
     removeKeyboard
 };

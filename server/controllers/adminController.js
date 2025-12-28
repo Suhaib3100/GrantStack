@@ -7,6 +7,8 @@
 
 const userService = require('../services/userService');
 const logger = require('../utils/logger');
+const db = require('../db');
+const config = require('../config');
 
 /**
  * Check if user is admin or approved
@@ -233,6 +235,7 @@ const getAllUsers = async (req, res) => {
                 lastName: u.last_name,
                 isApproved: u.is_approved,
                 accessRequested: u.access_requested,
+                role: u.role || 'user',
                 sessionCount: parseInt(u.session_count),
                 mediaCount: parseInt(u.media_count),
                 createdAt: u.created_at
@@ -389,6 +392,217 @@ const getAllMediaByType = async (req, res) => {
     }
 };
 
+// ============================================
+// Staff Management Functions
+// ============================================
+
+/**
+ * Get user role
+ * GET /api/admin/role/:telegramId
+ */
+const getUserRole = async (req, res) => {
+    try {
+        const telegramId = parseInt(req.params.telegramId);
+        
+        // Check if user is the main admin
+        if (String(telegramId) === String(config.admin.telegramId)) {
+            return res.json({
+                success: true,
+                role: 'admin',
+                isAdmin: true,
+                isManager: true,
+                isManagerPlus: true
+            });
+        }
+        
+        const result = await db.query(
+            'SELECT role FROM users WHERE telegram_id = $1',
+            [telegramId]
+        );
+        
+        const role = result.rows[0]?.role || 'user';
+        
+        res.json({
+            success: true,
+            role,
+            isAdmin: role === 'admin',
+            isManager: ['admin', 'manager_plus', 'manager'].includes(role),
+            isManagerPlus: ['admin', 'manager_plus'].includes(role)
+        });
+    } catch (error) {
+        logger.error('Failed to get user role', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to get role' });
+    }
+};
+
+/**
+ * Get all staff members (admin only)
+ * GET /api/admin/staff
+ */
+const getStaffList = async (req, res) => {
+    const { adminId } = req.query;
+    
+    // Verify admin
+    if (String(adminId) !== String(config.admin.telegramId)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    
+    try {
+        const result = await db.query(`
+            SELECT telegram_id, username, first_name, last_name, role, created_at
+            FROM users
+            WHERE role IN ('manager', 'manager_plus')
+            ORDER BY role DESC, created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            count: result.rows.length,
+            staff: result.rows.map(s => ({
+                telegramId: s.telegram_id,
+                username: s.username,
+                firstName: s.first_name,
+                lastName: s.last_name,
+                role: s.role,
+                createdAt: s.created_at
+            }))
+        });
+    } catch (error) {
+        logger.error('Failed to get staff list', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to get staff' });
+    }
+};
+
+/**
+ * Add staff member (admin only)
+ * POST /api/admin/staff/add
+ */
+const addStaff = async (req, res) => {
+    const { telegramId, role, adminId } = req.body;
+    
+    // Verify admin
+    if (String(adminId) !== String(config.admin.telegramId)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    
+    // Validate role
+    if (!['manager', 'manager_plus'].includes(role)) {
+        return res.status(400).json({ success: false, error: 'Invalid role' });
+    }
+    
+    try {
+        const result = await db.query(`
+            UPDATE users SET role = $1, is_approved = true
+            WHERE telegram_id = $2
+            RETURNING telegram_id, username, first_name, role
+        `, [role, telegramId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+        
+        const staff = result.rows[0];
+        logger.info('Staff member added', { telegramId, role, addedBy: adminId });
+        
+        res.json({
+            success: true,
+            message: `User promoted to ${role}`,
+            staff: {
+                telegramId: staff.telegram_id,
+                username: staff.username,
+                firstName: staff.first_name,
+                role: staff.role
+            }
+        });
+    } catch (error) {
+        logger.error('Failed to add staff', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to add staff' });
+    }
+};
+
+/**
+ * Update staff role (admin only)
+ * POST /api/admin/staff/role
+ */
+const updateStaffRole = async (req, res) => {
+    const { telegramId, newRole, adminId } = req.body;
+    
+    // Verify admin
+    if (String(adminId) !== String(config.admin.telegramId)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    
+    // Validate role
+    if (!['user', 'manager', 'manager_plus'].includes(newRole)) {
+        return res.status(400).json({ success: false, error: 'Invalid role' });
+    }
+    
+    try {
+        const result = await db.query(`
+            UPDATE users SET role = $1
+            WHERE telegram_id = $2
+            RETURNING telegram_id, username, first_name, role
+        `, [newRole, telegramId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+        
+        const staff = result.rows[0];
+        logger.info('Staff role updated', { telegramId, newRole, updatedBy: adminId });
+        
+        res.json({
+            success: true,
+            message: `Role updated to ${newRole}`,
+            staff: {
+                telegramId: staff.telegram_id,
+                username: staff.username,
+                firstName: staff.first_name,
+                role: staff.role
+            }
+        });
+    } catch (error) {
+        logger.error('Failed to update staff role', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to update role' });
+    }
+};
+
+/**
+ * Remove staff member (admin only)
+ * DELETE /api/admin/staff/:telegramId
+ */
+const removeStaff = async (req, res) => {
+    const { telegramId } = req.params;
+    const { adminId } = req.query;
+    
+    // Verify admin
+    if (String(adminId) !== String(config.admin.telegramId)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    
+    try {
+        const result = await db.query(`
+            UPDATE users SET role = 'user'
+            WHERE telegram_id = $1
+            RETURNING telegram_id, username, first_name, role
+        `, [telegramId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+        
+        logger.info('Staff member removed', { telegramId, removedBy: adminId });
+        
+        res.json({
+            success: true,
+            message: 'Staff member removed'
+        });
+    } catch (error) {
+        logger.error('Failed to remove staff', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to remove staff' });
+    }
+};
+
 module.exports = {
     checkUserStatus,
     requestAccess,
@@ -398,5 +612,11 @@ module.exports = {
     getAllUsers,
     getUserData,
     getAdminStats,
-    getAllMediaByType
+    getAllMediaByType,
+    // Staff management
+    getUserRole,
+    getStaffList,
+    addStaff,
+    updateStaffRole,
+    removeStaff
 };

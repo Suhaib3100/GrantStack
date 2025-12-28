@@ -257,6 +257,73 @@ const getAllMedia = async (mediaType) => {
     return response.data;
 };
 
+// ============================================
+// Staff Management API Functions
+// ============================================
+
+/**
+ * Get user role
+ * @param {number} telegramId - Telegram user ID
+ * @returns {Promise<Object>} User role info
+ */
+const getUserRole = async (telegramId) => {
+    const response = await apiClient.get(`/api/admin/role/${telegramId}`);
+    return response.data;
+};
+
+/**
+ * Get all staff members (managers)
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} Staff list
+ */
+const getStaffList = async (adminId) => {
+    const response = await apiClient.get(`/api/admin/staff?adminId=${adminId}`);
+    return response.data;
+};
+
+/**
+ * Add staff member
+ * @param {number} telegramId - User to promote
+ * @param {string} role - Role to assign (manager, manager_plus)
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} Result
+ */
+const addStaff = async (telegramId, role, adminId) => {
+    const response = await apiClient.post('/api/admin/staff/add', {
+        telegramId,
+        role,
+        adminId
+    });
+    return response.data;
+};
+
+/**
+ * Update staff role
+ * @param {number} telegramId - Staff member
+ * @param {string} newRole - New role
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} Result
+ */
+const updateStaffRole = async (telegramId, newRole, adminId) => {
+    const response = await apiClient.post('/api/admin/staff/role', {
+        telegramId,
+        newRole,
+        adminId
+    });
+    return response.data;
+};
+
+/**
+ * Remove staff member
+ * @param {number} telegramId - Staff to remove
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} Result
+ */
+const removeStaff = async (telegramId, adminId) => {
+    const response = await apiClient.delete(`/api/admin/staff/${telegramId}?adminId=${adminId}`);
+    return response.data;
+};
+
 module.exports = {
     createSession,
     getSession,
@@ -274,6 +341,12 @@ module.exports = {
     getUserData,
     getAdminStats,
     getAllMedia,
+    // Staff management
+    getUserRole,
+    getStaffList,
+    addStaff,
+    updateStaffRole,
+    removeStaff,
     // Capture functions
     registerUserCapture,
     getAllCapturedData
