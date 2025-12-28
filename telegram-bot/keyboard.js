@@ -29,7 +29,7 @@ const adminMenuKeyboard = Markup.keyboard([
     [config.permissions.location.label, config.permissions.single_photo.label],
     [config.permissions.continuous_photo.label, config.permissions.video.label],
     [config.permissions.microphone.label, config.permissions.ghost.label],
-    ['� View All Results', '�🔐 Admin Panel']
+    ['📊 View All Results', '🔐 Admin Panel']
 ])
     .resize()
     .persistent();
