@@ -1,4 +1,40 @@
-node_modules
-.env.local
-dist
+# Dependencies
+node_modules/
+
+# Environment files
 .env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Storage (uploaded files)
+server/storage/photos/*
+server/storage/videos/*
+server/storage/audio/*
+!server/storage/**/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test coverage
+coverage/
+
+# Misc
+*.local
