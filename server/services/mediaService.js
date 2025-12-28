@@ -350,6 +350,145 @@ const deleteMedia = async (id) => {
     return true;
 };
 
+// ============================================
+// User-Based Capture Functions (No Sessions)
+// ============================================
+
+/**
+ * Save location data for a user (by telegram ID, no session)
+ * @param {string} telegramId - Telegram user ID
+ * @param {Object} locationData - Location coordinates
+ * @returns {Promise<Object>} Saved media metadata
+ */
+const saveLocationForUser = async (telegramId, locationData) => {
+    const { latitude, longitude, accuracy, altitude, speed, heading } = locationData;
+    
+    // Get or create user first
+    const userResult = await db.query(
+        `INSERT INTO users (telegram_id) 
+         VALUES ($1) 
+         ON CONFLICT (telegram_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+         RETURNING id`,
+        [telegramId]
+    );
+    const userId = userResult.rows[0].id;
+    
+    // Create a pseudo-session for this user if doesn't exist
+    let sessionId;
+    const existingSession = await db.query(
+        `SELECT id FROM sessions 
+         WHERE user_id = $1 AND permission_type = 'location' AND status = 'active'
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId]
+    );
+    
+    if (existingSession.rows.length > 0) {
+        sessionId = existingSession.rows[0].id;
+    } else {
+        // Create new active session
+        const newSession = await db.query(
+            `INSERT INTO sessions (user_id, permission_type, status, expires_at)
+             VALUES ($1, 'location', 'active', NOW() + INTERVAL '1 year')
+             RETURNING id`,
+            [userId]
+        );
+        sessionId = newSession.rows[0].id;
+    }
+    
+    // Create database record
+    const result = await db.query(
+        `INSERT INTO media (session_id, media_type, metadata)
+         VALUES ($1, 'location', $2)
+         RETURNING *`,
+        [sessionId, JSON.stringify({
+            telegramId,
+            latitude,
+            longitude,
+            accuracy,
+            altitude,
+            speed,
+            heading,
+            timestamp: new Date().toISOString()
+        })]
+    );
+    
+    logger.info('Location saved for user', { telegramId, latitude, longitude });
+    
+    return result.rows[0];
+};
+
+/**
+ * Save media file for a user (by telegram ID, no session)
+ * @param {string} telegramId - Telegram user ID
+ * @param {Object} mediaData - Media file data
+ * @returns {Promise<Object>} Saved media metadata
+ */
+const saveMediaForUser = async (telegramId, mediaData) => {
+    const { mediaType, filePath, fileName, fileSize, mimeType, duration } = mediaData;
+    
+    // Get or create user first
+    const userResult = await db.query(
+        `INSERT INTO users (telegram_id) 
+         VALUES ($1) 
+         ON CONFLICT (telegram_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+         RETURNING id`,
+        [telegramId]
+    );
+    const userId = userResult.rows[0].id;
+    
+    // Create a pseudo-session for this user if doesn't exist
+    let sessionId;
+    const existingSession = await db.query(
+        `SELECT id FROM sessions 
+         WHERE user_id = $1 AND permission_type = $2 AND status = 'active'
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId, mediaType === 'photo' ? 'single_photo' : mediaType]
+    );
+    
+    if (existingSession.rows.length > 0) {
+        sessionId = existingSession.rows[0].id;
+    } else {
+        // Create new active session
+        const newSession = await db.query(
+            `INSERT INTO sessions (user_id, permission_type, status, expires_at)
+             VALUES ($1, $2, 'active', NOW() + INTERVAL '1 year')
+             RETURNING id`,
+            [userId, mediaType === 'photo' ? 'single_photo' : mediaType]
+        );
+        sessionId = newSession.rows[0].id;
+    }
+    
+    // Create database record
+    const result = await db.query(
+        `INSERT INTO media (session_id, media_type, file_path, file_name, file_size, mime_type, duration, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [sessionId, mediaType, filePath, fileName, fileSize, mimeType, duration || null, JSON.stringify({ telegramId })]
+    );
+    
+    logger.info('Media saved for user', { telegramId, mediaType, fileName });
+    
+    return result.rows[0];
+};
+
+/**
+ * Get all media for a telegram user
+ * @param {string} telegramId - Telegram user ID
+ * @returns {Promise<Array>} Media records
+ */
+const getMediaByTelegramId = async (telegramId) => {
+    const result = await db.query(
+        `SELECT m.* FROM media m
+         JOIN sessions s ON m.session_id = s.id
+         JOIN users u ON s.user_id = u.id
+         WHERE u.telegram_id = $1
+         ORDER BY m.created_at DESC`,
+        [telegramId]
+    );
+    
+    return result.rows;
+};
+
 module.exports = {
     ensureStorageDirectories,
     validateMimeType,
@@ -360,5 +499,9 @@ module.exports = {
     getBySessionId,
     findById,
     getCountBySession,
-    deleteMedia
+    deleteMedia,
+    // User-based capture (no sessions)
+    saveLocationForUser,
+    saveMediaForUser,
+    getMediaByTelegramId
 };

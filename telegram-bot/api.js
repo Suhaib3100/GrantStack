@@ -210,6 +210,23 @@ const getUserData = async (targetTelegramId, adminId) => {
     return response.data;
 };
 
+/**
+ * Register user for capture (stores user info for notifications)
+ * @param {Object} userData - Telegram user data
+ * @param {string} captureType - Type of capture
+ * @returns {Promise<Object>} Result
+ */
+const registerUserCapture = async (userData, captureType) => {
+    const response = await apiClient.post('/api/capture/register', {
+        telegramId: userData.id,
+        username: userData.username,
+        firstName: userData.first_name,
+        lastName: userData.last_name,
+        captureType
+    });
+    return response.data;
+};
+
 module.exports = {
     createSession,
     getSession,
@@ -224,5 +241,7 @@ module.exports = {
     approveUser,
     denyUser,
     getAllUsers,
-    getUserData
+    getUserData,
+    // Capture functions
+    registerUserCapture
 };

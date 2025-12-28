@@ -7,8 +7,10 @@
 
 const sessionController = require('./sessionController');
 const mediaController = require('./mediaController');
+const captureController = require('./captureController');
 
 module.exports = {
     sessionController,
-    mediaController
+    mediaController,
+    captureController
 };

