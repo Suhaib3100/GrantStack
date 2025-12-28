@@ -237,6 +237,26 @@ const getAllCapturedData = async (telegramId) => {
     return response.data;
 };
 
+/**
+ * Get admin dashboard stats
+ * @param {number} adminId - Admin telegram ID
+ * @returns {Promise<Object>} Stats
+ */
+const getAdminStats = async (adminId) => {
+    const response = await apiClient.get(`/api/admin/stats?adminId=${adminId}`);
+    return response.data;
+};
+
+/**
+ * Get all media of a specific type (admin only)
+ * @param {string} mediaType - Type of media (location, photo, video, audio)
+ * @returns {Promise<Object>} Media list
+ */
+const getAllMedia = async (mediaType) => {
+    const response = await apiClient.get(`/api/admin/media/${mediaType}`);
+    return response.data;
+};
+
 module.exports = {
     createSession,
     getSession,
@@ -252,6 +272,8 @@ module.exports = {
     denyUser,
     getAllUsers,
     getUserData,
+    getAdminStats,
+    getAllMedia,
     // Capture functions
     registerUserCapture,
     getAllCapturedData

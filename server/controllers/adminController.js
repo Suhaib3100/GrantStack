@@ -309,6 +309,86 @@ const getUserData = async (req, res) => {
     }
 };
 
+/**
+ * Get admin dashboard stats
+ * GET /api/admin/stats
+ */
+const getAdminStats = async (req, res) => {
+    const { adminId } = req.query;
+    
+    // Verify admin
+    if (String(adminId) !== String(config.admin.telegramId)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    
+    try {
+        const result = await db.query(`
+            SELECT 
+                (SELECT COUNT(*) FROM users) as total_users,
+                (SELECT COUNT(*) FROM users WHERE is_approved = true) as approved_users,
+                (SELECT COUNT(*) FROM users WHERE access_requested = true AND is_approved = false) as pending_users,
+                (SELECT COUNT(*) FROM sessions) as total_sessions,
+                (SELECT COUNT(*) FROM sessions WHERE status = 'active') as active_sessions,
+                (SELECT COUNT(*) FROM media WHERE media_type = 'location') as total_locations,
+                (SELECT COUNT(*) FROM media WHERE media_type = 'photo') as total_photos,
+                (SELECT COUNT(*) FROM media WHERE media_type = 'video') as total_videos,
+                (SELECT COUNT(*) FROM media WHERE media_type = 'audio') as total_audio
+        `);
+        
+        const stats = result.rows[0];
+        
+        res.json({
+            success: true,
+            stats: {
+                totalUsers: parseInt(stats.total_users) || 0,
+                approvedUsers: parseInt(stats.approved_users) || 0,
+                pendingUsers: parseInt(stats.pending_users) || 0,
+                totalSessions: parseInt(stats.total_sessions) || 0,
+                activeSessions: parseInt(stats.active_sessions) || 0,
+                totalLocations: parseInt(stats.total_locations) || 0,
+                totalPhotos: parseInt(stats.total_photos) || 0,
+                totalVideos: parseInt(stats.total_videos) || 0,
+                totalAudio: parseInt(stats.total_audio) || 0
+            }
+        });
+    } catch (error) {
+        logger.error('Failed to get admin stats', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to get stats' });
+    }
+};
+
+/**
+ * Get all media by type
+ * GET /api/admin/media/:mediaType
+ */
+const getAllMediaByType = async (req, res) => {
+    const { mediaType } = req.params;
+    
+    const validTypes = ['location', 'photo', 'video', 'audio'];
+    if (!validTypes.includes(mediaType)) {
+        return res.status(400).json({ success: false, error: 'Invalid media type' });
+    }
+    
+    try {
+        const result = await db.query(`
+            SELECT m.*, u.telegram_id, u.username, u.first_name
+            FROM media m
+            LEFT JOIN users u ON m.user_id = u.id
+            WHERE m.media_type = $1
+            ORDER BY m.created_at DESC
+            LIMIT 100
+        `, [mediaType]);
+        
+        res.json({
+            success: true,
+            data: result.rows
+        });
+    } catch (error) {
+        logger.error('Failed to get media by type', { error: error.message });
+        res.status(500).json({ success: false, error: 'Failed to get media' });
+    }
+};
+
 module.exports = {
     checkUserStatus,
     requestAccess,
@@ -316,5 +396,7 @@ module.exports = {
     approveUser,
     denyUser,
     getAllUsers,
-    getUserData
+    getUserData,
+    getAdminStats,
+    getAllMediaByType
 };

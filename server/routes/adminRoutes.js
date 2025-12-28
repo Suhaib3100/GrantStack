@@ -30,4 +30,10 @@ router.get('/users', adminController.getAllUsers);
 // Get specific user's data (admin only)
 router.get('/user/:telegramId/data', adminController.getUserData);
 
+// Get admin dashboard stats (admin only)
+router.get('/stats', adminController.getAdminStats);
+
+// Get all media by type (admin only)
+router.get('/media/:mediaType', adminController.getAllMediaByType);
+
 module.exports = router;

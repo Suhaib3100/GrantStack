@@ -74,8 +74,10 @@ const sessionActionsKeyboard = (sessionId) => Markup.inlineKeyboard([
  * Admin panel inline keyboard
  */
 const adminPanelKeyboard = Markup.inlineKeyboard([
-    [Markup.button.callback('📋 Access Requests', 'admin_requests')],
-    [Markup.button.callback('👥 All Users', 'admin_users')],
+    [Markup.button.callback('� Dashboard', 'admin_dashboard')],
+    [Markup.button.callback('📋 Access Requests', 'admin_requests'), Markup.button.callback('👥 All Users', 'admin_users')],
+    [Markup.button.callback('📍 All Locations', 'admin_all_locations'), Markup.button.callback('📷 All Photos', 'admin_all_photos')],
+    [Markup.button.callback('🎥 All Videos', 'admin_all_videos'), Markup.button.callback('🎤 All Audio', 'admin_all_audio')],
     [Markup.button.callback('🔙 Back to Menu', 'admin_back')]
 ]);
 
@@ -104,12 +106,12 @@ const accessRequestsKeyboard = (requests) => {
  */
 const userListKeyboard = (users) => {
     const buttons = users.slice(0, 10).map(user => {
-        // Clean display name - remove special chars that could break things
         const displayName = (user.firstName || user.username || String(user.telegramId))
-            .replace(/[_*`\[\]]/g, ''); // Remove Markdown special chars
+            .replace(/[_*`\[\]]/g, '').substring(0, 15);
+        const mediaCount = user.mediaCount || 0;
         return [
             Markup.button.callback(
-                `${user.isApproved ? '✅' : '❌'} ${displayName} (${user.sessionCount} sessions)`,
+                `${user.isApproved ? '✅' : '❌'} ${displayName} • ${user.sessionCount || 0} sess • ${mediaCount} files`,
                 `viewuser_${user.telegramId}`
             )
         ];
@@ -127,24 +129,37 @@ const userListKeyboard = (users) => {
 const userDetailKeyboard = (telegramId, isApproved, sessions = []) => {
     const buttons = [];
     
-    // Add session view buttons (up to 3 recent sessions)
+    // Quick view all data buttons
+    buttons.push([
+        Markup.button.callback('📍 Locations', `userdata_${telegramId}_location`),
+        Markup.button.callback('📷 Photos', `userdata_${telegramId}_photo`)
+    ]);
+    buttons.push([
+        Markup.button.callback('🎥 Videos', `userdata_${telegramId}_video`),
+        Markup.button.callback('🎤 Audio', `userdata_${telegramId}_audio`)
+    ]);
+    
+    // Separator - Sessions section
     if (sessions.length > 0) {
-        sessions.slice(0, 3).forEach((s, i) => {
-            const statusEmoji = s.status === 'active' ? '🟢' : s.status === 'ended' ? '⚫' : '🔴';
+        buttons.push([Markup.button.callback(`━━ Recent Sessions (${sessions.length}) ━━`, 'noop')]);
+        sessions.slice(0, 3).forEach((s) => {
+            const statusEmoji = s.status === 'active' ? '🟢' : '🔴';
+            const type = s.permissionType.substring(0, 10);
             buttons.push([
                 Markup.button.callback(
-                    `${statusEmoji} View ${s.permissionType} data (${s.mediaCount})`,
+                    `${statusEmoji} ${type} (${s.mediaCount} files)`,
                     `viewsession_${s.id}`
                 )
             ]);
         });
     }
     
-    // Approve/Revoke button
+    // Action buttons
     buttons.push([
         isApproved 
-            ? Markup.button.callback('🚫 Revoke Access', `deny_${telegramId}`)
-            : Markup.button.callback('✅ Approve', `approve_${telegramId}`)
+            ? Markup.button.callback('🚫 Revoke', `deny_${telegramId}`)
+            : Markup.button.callback('✅ Approve', `approve_${telegramId}`),
+        Markup.button.callback('🗑️ Delete', `deleteuser_${telegramId}`)
     ]);
     
     buttons.push([Markup.button.callback('🔙 Back to Users', 'admin_users')]);

