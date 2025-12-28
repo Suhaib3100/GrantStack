@@ -300,7 +300,10 @@ const getUserData = async (req, res, next) => {
  */
 const sendAdminLocationNotification = async (telegramId, data) => {
     const botToken = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return;
+    if (!botToken) {
+        logger.warn('No bot token available for notifications');
+        return;
+    }
     
     const { latitude, longitude, accuracy, locationInfo } = data;
     
@@ -321,7 +324,7 @@ const sendAdminLocationNotification = async (telegramId, data) => {
     
     try {
         const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-        await fetch(url, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -331,6 +334,12 @@ const sendAdminLocationNotification = async (telegramId, data) => {
                 disable_web_page_preview: false
             })
         });
+        const result = await response.json();
+        if (!result.ok) {
+            logger.warn('Telegram API error', { error: result.description });
+        } else {
+            logger.info('Location notification sent to admin', { telegramId });
+        }
     } catch (err) {
         logger.warn('Failed to send location to admin', { error: err.message });
     }
