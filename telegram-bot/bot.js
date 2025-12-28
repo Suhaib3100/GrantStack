@@ -5,7 +5,7 @@
  * Main bot logic with command and message handlers.
  */
 
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const config = require('./config');
 const logger = require('./logger');
 const api = require('./api');
